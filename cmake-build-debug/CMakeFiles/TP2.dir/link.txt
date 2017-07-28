@@ -1,0 +1,1 @@
+/usr/bin/cc  -g   -lpthread -lpcap CMakeFiles/TP2.dir/main.c.o CMakeFiles/TP2.dir/lib/tp2opt.c.o  -o ../bin/TP2 

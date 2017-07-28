@@ -1,0 +1,8 @@
+/bin/
+/doc/
+/tmp/
+.directory
+.idea/TP2.iml
+.idea/misc.xml
+.idea/modules.xml
+.idea/workspace.xml
