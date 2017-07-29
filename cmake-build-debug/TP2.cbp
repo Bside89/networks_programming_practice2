@@ -88,6 +88,12 @@
 		<Unit filename="/home/darkwolf/AllFiles/Faculdade/Season 6/Lab Redes/Atividades/TP2/lib/tp2opt.h">
 			<Option target="TP2"/>
 		</Unit>
+		<Unit filename="/home/darkwolf/AllFiles/Faculdade/Season 6/Lab Redes/Atividades/TP2/lib/tp2utils.c">
+			<Option target="TP2"/>
+		</Unit>
+		<Unit filename="/home/darkwolf/AllFiles/Faculdade/Season 6/Lab Redes/Atividades/TP2/lib/tp2utils.h">
+			<Option target="TP2"/>
+		</Unit>
 		<Unit filename="/home/darkwolf/AllFiles/Faculdade/Season 6/Lab Redes/Atividades/TP2/main.c">
 			<Option target="TP2"/>
 		</Unit>

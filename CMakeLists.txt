@@ -8,5 +8,5 @@ set(GCC_OPT_FLAG "-lpthread -lpcap")
 SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} ${GCC_OPT_FLAG}")
 SET(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} ${GCC_OPT_FLAG}")
 
-set(SOURCE_FILES main.c lib/tp2opt.c lib/tp2opt.h)
+set(SOURCE_FILES main.c lib/tp2opt.c lib/tp2opt.h lib/tp2utils.c lib/tp2utils.h)
 add_executable(TP2 ${SOURCE_FILES})

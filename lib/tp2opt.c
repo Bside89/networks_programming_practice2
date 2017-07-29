@@ -1,7 +1,3 @@
-//
-// Created by darkwolf on 02/07/17.
-//
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -16,14 +12,10 @@ int netopt_is_option_valid(int mode);
 
 int paopt_set(int argc, char **argv, pa_opt *o) {
 
-    int c, index;
+    int c;
     short rw_set = 0, i_set = 0, f_set = 0, db_set = 0;
 
-    o->process_ethernet = 1;
-    o->process_ipv4 = 1;
-    o->process_tcp = 1;
-    o->process_udp = 1;
-    o->debug_opt = 0; // Debug deactived
+    o->debug_opt = 0;
 
     opterr = 0;
 
@@ -62,7 +54,7 @@ int paopt_set(int argc, char **argv, pa_opt *o) {
                 db_set = 1;
                 break;
             case '?':
-                if (isprint (optopt))
+                if (isprint(optopt))
                     fprintf(stderr, "Unknown option '-%c'.\n", optopt);
                 else
                     fprintf(stderr, "Unknown option character '\\x%x'.\n", optopt);
@@ -74,22 +66,15 @@ int paopt_set(int argc, char **argv, pa_opt *o) {
     if (argc - optind > 0) { // Has optional <args>
         puts("Has optional arguments <args>. Ignoring for awhile.");
         /*
-        for (index = optind; index < argc; index++) {
-            if (!strcmp(argv[index], "ethernet")) {
+        int i, j;
+        for (i = optind; i < argc; index++) {
+            for (j = 0; j < 4; j++) {
+                if (!strcmp(argv[i], a[j])) {
 
-            } else if (!strcmp(argv[index], "ipv4")) {
-
-            } else if (!strcmp(argv[index], "tcp")) {
-
-            } else if (!strcmp(argv[index], "udp")) {
-
-            } else { // Error
-                fprintf(stderr, "\n");
-                return PAOPT_OPTION_NOT_VALID;
+                }
             }
-            printf("Opt: '%s'\n", argv[index]);
-        }
-        */
+            printf("Opt: '%s'\n", argv[i]);
+        }*/
     }
     if (o->debug_opt)
         paopt_debug(o);
@@ -113,13 +98,9 @@ void paopt_debug(pa_opt *o) {
     puts("| ----------------------------------------- |");
     puts("| ************ PACKET ANALYZER ************ |");
     puts("| ----------------------------------------- |");
-    printf("| File mode: \t\t\t%s\n", rwmode[o->rw_mode_opt]);
-    printf("| File path: \t\t\t%s\n", o->filepath);
-    printf("| Interface name: \t\t%s\n", o->interface_name);
-    printf("| Print packet load: \t\t%s\n", answer[o->print_load_opt]);
-    printf("| Process Ethernet header: \t%s\n", answer[o->process_ethernet]);
-    printf("| Process IPv4 header: \t\t%s\n", answer[o->process_ipv4]);
-    printf("| Process TCP header: \t\t%s\n", answer[o->process_tcp]);
-    printf("| Process UDP header: \t\t%s\n", answer[o->process_udp]);
+    printf("| File mode: \t\t%s\n", rwmode[o->rw_mode_opt]);
+    printf("| File path: \t\t%s\n", o->filepath);
+    printf("| Interface name: \t%s\n", o->interface_name);
+    printf("| Print packet load: \t%s\n", answer[o->print_load_opt]);
     puts("| ----------------------------------------- |");
 }
