@@ -17,6 +17,8 @@ volatile int is_exit = 0;
 // Global pcap handler
 pcap_t *handle;
 
+pa_opt options;
+
 
 void pcap_myhandler(u_char*, const struct pcap_pkthdr*, const u_char*);
 
@@ -26,8 +28,6 @@ void pcap_debug();
 
 
 int main(int argc, char *argv[]) {
-
-    pa_opt options;
 
     pthread_t threads[THREADS_SIZE];
     int threads_counter = 0;
@@ -78,6 +78,7 @@ int main(int argc, char *argv[]) {
     if (options.debug_opt)
         pcap_debug();
 
+    puts(DIV_LINE);
     pcap_loop(handle, npackets, pcap_myhandler, NULL);
     pcap_close(handle);
 
@@ -92,34 +93,50 @@ void pcap_myhandler(u_char* args, const struct pcap_pkthdr* header,
 
     static int count = 1;
 
-    const sniff_ethernet *ethernet;
-    const sniff_ip *ip;
-    const sniff_tcp *tcp;
-    const char *payload;
+    const ethernet_hdr_t *ethernet;
+    const ip_hdr_t *ip;
+    const tcp_hdr_t *tcp;
+    const udp_hdr_t *udp;
+    const u_char *payload;
 
-    int size_ip, size_tcp, size_payload;
+    int size_ip;
+    int size_tcp_udp;
+    int size_payload;
 
-    printf("\nPacket number %d:\n", count++);
+    puts(DIV_LINE);
+    printf("Packet number %d:\n", count++);
 
     /* define ethernet header */
-    ethernet = (struct ether_header*)(packet);
+    ethernet = (ethernet_hdr_t*)(packet);
 
     print_ethernet_header(ethernet);
 
     /* define/compute ip header offset */
-    ip = (sniff_ip*)(packet + TP2_SIZE_ETHERNET);
-    size_ip = IP_HL(ip)*4;
-    if (size_ip < TP2_MIN_SIZE_IP) {
-        printf("Invalid IP header length: %u bytes\n", size_ip);
+    ip = (ip_hdr_t*)(packet + ETHERNET_HEADER_SIZE);
+    size_ip = IP_IHL(ip);
+    if (size_ip < IP_HEADER_MIN_SIZE) {
+        printf("Invalid IP header length: %u bytes.\n", size_ip);
         return;
     }
+    print_ip_header(ip);
 
     /* determine protocol */
     switch(ip->ip_p) {
         case IPPROTO_TCP:
+            /* define/compute tcp header offset */
+            tcp = (tcp_hdr_t*)(packet + ETHERNET_HEADER_SIZE + size_ip);
+            size_tcp_udp = TH_OFF(tcp);
+            if (size_tcp_udp < TCP_HEADER_MIN_SIZE) {
+                printf("Invalid TCP header length: %u bytes.\n", size_tcp_udp);
+                return;
+            }
+            print_tcp_header(tcp);
             break;
         case IPPROTO_UDP:
-            return;
+            udp = (udp_hdr_t *)(packet + ETHERNET_HEADER_SIZE + size_ip);
+            size_tcp_udp = UDP_HEADER_SIZE;
+            print_udp_header(udp);
+            break;
         case IPPROTO_ICMP:
             return;
         case IPPROTO_IP:
@@ -127,32 +144,26 @@ void pcap_myhandler(u_char* args, const struct pcap_pkthdr* header,
         default:
             return;
     }
-    print_ip_header(ip);
 
-    /* define/compute tcp header offset */
-    tcp = (sniff_tcp*)(packet + TP2_SIZE_ETHERNET + size_ip);
-    size_tcp = TH_OFF(tcp)*4;
-    if (size_tcp < 20) {
-        printf("   * Invalid TCP header length: %u bytes\n", size_tcp);
-        return;
+    if (options.print_payload_opt) {
+
+        payload = (packet + ETHERNET_HEADER_SIZE + size_ip + size_tcp_udp);
+        size_payload = ntohs(ip->ip_len) - (size_ip + size_tcp_udp);
+
+        if (size_payload > 0) {
+            puts(MINOR_DIV_LINE);
+            printf("[Payload (%d bytes)]\n", size_payload);
+            const u_char *temp_pointer = payload;
+            int byte_count = 0;
+            while (byte_count++ < size_payload) {
+                printf("%c", *temp_pointer);
+                temp_pointer++;
+            }
+            putchar('\n');
+            puts(MINOR_DIV_LINE);
+        }
     }
-
-    print_tcp_header(tcp);
-
-    /* define/compute tcp payload (segment) offset */
-    payload = (u_char *)(packet + TP2_SIZE_ETHERNET + size_ip + size_tcp);
-
-    /* compute tcp payload (segment) size */
-    size_payload = ntohs(ip->ip_len) - (size_ip + size_tcp);
-
-    /*
-     * Print payload data; it might be binary, so don't just
-     * treat it as a string.
-     */
-    if (size_payload > 0) {
-        printf("   Payload (%d bytes):\n", size_payload);
-        //printf(payload);
-    }
+    puts(DIV_LINE);
 }
 
 

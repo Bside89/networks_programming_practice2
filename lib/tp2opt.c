@@ -41,10 +41,10 @@ int paopt_set(int argc, char **argv, pa_opt *o) {
                 strcpy(o->interface_name, optarg);
                 i_set = 1;
                 break;
-            case OPT_PRINT_LOAD:
+            case OPT_PRINT_PAYLOAD:
                 if (!netopt_is_option_valid(f_set))
                     return PAOPT_OPTION_NOT_VALID;
-                o->print_load_opt = 1;
+                o->print_payload_opt = 1;
                 f_set = 1;
                 break;
             case OPT_DEBUG:
@@ -101,6 +101,6 @@ void paopt_debug(pa_opt *o) {
     printf("| File mode: \t\t%s\n", rwmode[o->rw_mode_opt]);
     printf("| File path: \t\t%s\n", o->filepath);
     printf("| Interface name: \t%s\n", o->interface_name);
-    printf("| Print packet load: \t%s\n", answer[o->print_load_opt]);
+    printf("| Print packet load: \t%s\n", answer[o->print_payload_opt]);
     puts("| ----------------------------------------- |");
 }

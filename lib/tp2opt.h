@@ -14,7 +14,7 @@
 
 #define OPT_INTERFACE_NAME 'i'
 
-#define OPT_PRINT_LOAD 'f'
+#define OPT_PRINT_PAYLOAD 'f'
 
 #define OPT_DEBUG 'd'
 
@@ -29,7 +29,7 @@ typedef struct {
     paopt_rw_mode rw_mode_opt;
     char filepath[PATH_MAX];
     char interface_name[16];
-    int print_load_opt;
+    int print_payload_opt;
     int debug_opt;
 } pa_opt;
 
