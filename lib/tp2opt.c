@@ -95,12 +95,13 @@ int netopt_is_option_valid(int mode) {
 void paopt_debug(pa_opt *o) {
     const char *answer[2] = {"no", "yes"};
     const char *rwmode[2] = {"read", "write"};
-    puts("| ----------------------------------------- |");
-    puts("| ************ PACKET ANALYZER ************ |");
-    puts("| ----------------------------------------- |");
-    printf("| File mode: \t\t%s\n", rwmode[o->rw_mode_opt]);
-    printf("| File path: \t\t%s\n", o->filepath);
-    printf("| Interface name: \t%s\n", o->interface_name);
-    printf("| Print packet load: \t%s\n", answer[o->print_payload_opt]);
-    puts("| ----------------------------------------- |");
+    puts(DIV_LINE);
+    puts(MINOR_DIV_LINE);
+    puts("PACKET ANALYZER OPT INFO (DEBUG MODE)\n");
+    printf("File mode: \t\t%s\n", rwmode[o->rw_mode_opt]);
+    printf("File path: \t\t%s\n", o->filepath);
+    printf("Interface name: \t%s\n", o->interface_name);
+    printf("Print packet load: \t%s\n", answer[o->print_payload_opt]);
+    puts(MINOR_DIV_LINE);
+    puts(DIV_LINE);
 }

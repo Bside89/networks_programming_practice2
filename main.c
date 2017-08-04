@@ -4,7 +4,7 @@
 #include <signal.h>
 #include <netinet/in.h>
 #include <netinet/ether.h>
-#include <arpa/inet.h>
+#include <string.h>
 #include "lib/tp2opt.h"
 #include "lib/tp2utils.h"
 
@@ -33,7 +33,7 @@ int main(int argc, char *argv[]) {
     int threads_counter = 0;
 
     char errbuf[PCAP_ERRBUF_SIZE];
-    char filter[] = "";
+    char filter[] = "ip";
     bpf_u_int32 mask;
     bpf_u_int32 net;
     struct bpf_program fp;
@@ -78,7 +78,6 @@ int main(int argc, char *argv[]) {
     if (options.debug_opt)
         pcap_debug();
 
-    puts(DIV_LINE);
     pcap_loop(handle, npackets, pcap_myhandler, NULL);
     pcap_close(handle);
 
@@ -93,77 +92,51 @@ void pcap_myhandler(u_char* args, const struct pcap_pkthdr* header,
 
     static int count = 1;
 
-    const ethernet_hdr_t *ethernet;
-    const ip_hdr_t *ip;
-    const tcp_hdr_t *tcp;
-    const udp_hdr_t *udp;
-    const u_char *payload;
-
+    packet_t p;
     int size_ip;
     int size_tcp_udp;
-    int size_payload;
 
-    puts(DIV_LINE);
-    printf("Packet number %d:\n", count++);
+    memset(&p, 0, sizeof(p));
 
-    /* define ethernet header */
-    ethernet = (ethernet_hdr_t*)(packet);
-
-    print_ethernet_header(ethernet);
+    p.eth_header = (ethernet_hdr_t*)(packet);
+    p.is_ipv4 = ntohs(p.eth_header->ether_type) == ETHERTYPE_IP;
 
     /* define/compute ip header offset */
-    ip = (ip_hdr_t*)(packet + ETHERNET_HEADER_SIZE);
-    size_ip = IP_IHL(ip);
+    p.ipv4_header = (ip_hdr_t*)(packet + ETHERNET_HEADER_SIZE);
+    size_ip = IP_IHL(p.ipv4_header);
     if (size_ip < IP_HEADER_MIN_SIZE) {
         printf("Invalid IP header length: %u bytes.\n", size_ip);
         return;
     }
-    print_ip_header(ip);
 
     /* determine protocol */
-    switch(ip->ip_p) {
+    switch(p.ipv4_header->ip_p) {
         case IPPROTO_TCP:
             /* define/compute tcp header offset */
-            tcp = (tcp_hdr_t*)(packet + ETHERNET_HEADER_SIZE + size_ip);
-            size_tcp_udp = TH_OFF(tcp);
+            p.tcp_header = (tcp_hdr_t*)(packet + ETHERNET_HEADER_SIZE + size_ip);
+            size_tcp_udp = TH_OFF(p.tcp_header);
+            p.is_tcp = 1;
             if (size_tcp_udp < TCP_HEADER_MIN_SIZE) {
                 printf("Invalid TCP header length: %u bytes.\n", size_tcp_udp);
                 return;
             }
-            print_tcp_header(tcp);
             break;
         case IPPROTO_UDP:
-            udp = (udp_hdr_t *)(packet + ETHERNET_HEADER_SIZE + size_ip);
+            p.udp_header = (udp_hdr_t *)(packet + ETHERNET_HEADER_SIZE + size_ip);
             size_tcp_udp = UDP_HEADER_SIZE;
-            print_udp_header(udp);
+            p.is_udp = 1;
             break;
-        case IPPROTO_ICMP:
-            return;
-        case IPPROTO_IP:
-            return;
         default:
+            // IPPROTO_ICMP or IPPROTO_IP etc.
             return;
     }
 
     if (options.print_payload_opt) {
-
-        payload = (packet + ETHERNET_HEADER_SIZE + size_ip + size_tcp_udp);
-        size_payload = ntohs(ip->ip_len) - (size_ip + size_tcp_udp);
-
-        if (size_payload > 0) {
-            puts(MINOR_DIV_LINE);
-            printf("[Payload (%d bytes)]\n", size_payload);
-            const u_char *temp_pointer = payload;
-            int byte_count = 0;
-            while (byte_count++ < size_payload) {
-                printf("%c", *temp_pointer);
-                temp_pointer++;
-            }
-            putchar('\n');
-            puts(MINOR_DIV_LINE);
-        }
+        p.payload = (u_char *) (packet + ETHERNET_HEADER_SIZE + size_ip + size_tcp_udp);
+        p.size_payload = ntohs(p.ipv4_header->ip_len) - (size_ip + size_tcp_udp);
+        p.print_payload = 1;
     }
-    puts(DIV_LINE);
+    print_packet(&p, count++, header->len);
 }
 
 
@@ -184,11 +157,11 @@ void pcap_debug() {
     }
 
     //Print the available devices
-    puts("| ----------------------------------------- |");
-    puts("| Available devices for packet sniffing:");
+    puts(DIV_LINE);
+    puts("Available devices for packet sniffing:\n");
     int count = 1;
     for (device = alldevsp; device != NULL; device = device->next) {
-        printf("| %d.\t%s --- %s\n" , count++, device->name, device->description);
+        printf("%02d.\t%9.9s ---- %s\n", count++, device->name, device->description);
     }
-    puts("| ----------------------------------------- |");
+    puts(DIV_LINE);
 }

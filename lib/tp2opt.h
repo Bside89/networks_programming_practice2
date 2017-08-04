@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <stdint.h>
 #include <limits.h>
+#include "common.h"
 
 // Options (getopt)
 
