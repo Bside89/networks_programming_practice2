@@ -42,7 +42,7 @@ void print_ethernet_header(const ethernet_hdr_t *eth) {
 void print_ip_header(const ip_hdr_t *ip) {
     printf("[IPv%d] ", ip->ip_version);
     printf("Header size: %d, ", IP_IHL(ip));
-    printf("Total size: %d, ", ip->ip_len);
+    printf("Total size: %d, ", ntohs(ip->ip_len));
     printf("Id: 0x%04x, ", ip->ip_id);
     printf("Fragm. offset: %d, ", ip->ip_fragment_offset);
     printf("TTL: %d, ", ip->ip_ttl);
@@ -70,14 +70,34 @@ void print_ip_header(const ip_hdr_t *ip) {
 
 
 void print_tcp_header(const tcp_hdr_t *tcp) {
+
+    static const char *flags_labels[] = {"NS", "CWR", "ECE", "URG", "ACK",
+                                         "PSH", "RST", "SYN", "FIN"};
+    int flags[] = {tcp->th_flag_ns,     tcp->th_flag_cwr,   tcp->th_flag_ece,
+                   tcp->th_flag_urg,    tcp->th_flag_ack,   tcp->th_flag_psh,
+                   tcp->th_flag_rst,    tcp->th_flag_syn,   tcp->th_flag_fin};
+    int i, print_separator = 0;
+
     printf("[TCP] ");
     printf("Port: ");
     printf("%d > ", ntohs(tcp->th_sport));
     printf("%d, ", ntohs(tcp->th_dport));
     printf("Seq. num.: %"PRIu32", ", ntohl(tcp->th_seq));
-    printf("Ack. num.: %"PRIu32", ", ntohl(tcp->th_ack));
+    if (flags[4]) // ACK is set
+        printf("Ack. num.: %"PRIu32", ", ntohl(tcp->th_ack));
     printf("Header size: %d bytes, ", TH_OFF(tcp));
-    printf("Window size: %d, ", tcp->th_win);
+    printf("FLAGS: ");
+    for (i = 0; i < 9; i++) {
+        if (flags[i]) {
+            if (print_separator)
+                putchar('+');
+            else
+                print_separator = 1;
+            printf("%s", flags_labels[i]);
+        }
+    }
+    printf(", ");
+    printf("Window size: %d, ", ntohs(tcp->th_win));
     printf("Checksum: 0x%06x.", tcp->th_sum);
     putchar('\n');
 }

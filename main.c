@@ -60,25 +60,32 @@ int main(int argc, char *argv[]) {
     if (handle == NULL) {
         fprintf(stderr, "Couldn't open device %s: %s\n",
                 options.interface_name, errbuf);
-        return 2;
+        exit(EXIT_FAILURE);
+    }
+
+    /* make sure we're capturing on an Ethernet device [2] */
+    if (pcap_datalink(handle) != DLT_EN10MB) {
+        fprintf(stderr, "%s is not an Ethernet\n", options.interface_name);
+        exit(EXIT_FAILURE);
     }
 
     if (pcap_compile(handle, &fp, filter, 0, net) == -1) {
         fprintf(stderr, "Couldn't parse filter %s: %s\n",
                 filter, pcap_geterr(handle));
-        return 2;
+        exit(EXIT_FAILURE);
     }
 
     if (pcap_setfilter(handle, &fp) == -1) {
         fprintf(stderr, "Couldn't install filter %s: %s\n",
                 filter, pcap_geterr(handle));
-        return 2;
+        exit(EXIT_FAILURE);
     }
 
     if (options.debug_opt)
         pcap_debug();
 
     pcap_loop(handle, npackets, pcap_myhandler, NULL);
+    pcap_freecode(&fp);
     pcap_close(handle);
 
     printf("\n\nClosing program.\n\n");
