@@ -42,6 +42,8 @@ int main(int argc, char *argv[]) {
 
     signal(SIGINT, sigint_handler);
 
+    puts(DIV_LINE);
+
     // Set options for application
     if (paopt_set(argc, argv, &options) < 0) {
         fprintf(stderr, "A error occurred. Exiting application.\n");
@@ -105,7 +107,7 @@ void pcap_myhandler(u_char* args, const struct pcap_pkthdr* header,
 
     memset(&p, 0, sizeof(p));
 
-    p.eth_header = (ethernet_hdr_t*)(packet);
+    p.eth_header = (eth_hdr_t*)(packet);
     p.is_ipv4 = ntohs(p.eth_header->ether_type) == ETHERTYPE_IP;
 
     /* define/compute ip header offset */
@@ -158,17 +160,19 @@ void pcap_debug() {
     char errbuf[PCAP_ERRBUF_SIZE];
     pcap_if_t *alldevsp, *device;
 
+    puts(MINOR_DIV_LINE);
+
     if (pcap_findalldevs(&alldevsp , errbuf) < 0) {
         fprintf(stderr, "Error finding devices: %s", errbuf);
         exit(EXIT_FAILURE);
     }
 
     //Print the available devices
-    puts(DIV_LINE);
     puts("Available devices for packet sniffing:\n");
     int count = 1;
-    for (device = alldevsp; device != NULL; device = device->next) {
+    for (device = alldevsp; device != NULL; device = device->next)
         printf("%02d.\t%9.9s ---- %s\n", count++, device->name, device->description);
-    }
+    pcap_freealldevs(alldevsp);
+    puts(MINOR_DIV_LINE);
     puts(DIV_LINE);
 }

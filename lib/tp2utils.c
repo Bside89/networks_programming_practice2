@@ -8,7 +8,7 @@
 #include <arpa/inet.h>
 
 
-void print_ethernet_header(const ethernet_hdr_t *eth) {
+void print_ethernet_header(const eth_hdr_t *eth) {
 
     uint16_t protocol;
     printf("[Ethernet] ");
@@ -135,7 +135,6 @@ void print_packet(packet_t *packet, int pck_num, int pck_size) {
     if (!packet->is_tcp && !packet->is_udp) {
         return;
     }
-    puts(DIV_LINE);
     puts(MINOR_DIV_LINE);
     printf("Packet number:\t<%d>\n", pck_num);
     printf("Packet length:\t%d bytes.\n", pck_size);

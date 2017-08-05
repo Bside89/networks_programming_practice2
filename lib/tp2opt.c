@@ -95,7 +95,6 @@ int netopt_is_option_valid(int mode) {
 void paopt_debug(pa_opt *o) {
     const char *answer[2] = {"no", "yes"};
     const char *rwmode[2] = {"read", "write"};
-    puts(DIV_LINE);
     puts(MINOR_DIV_LINE);
     puts("PACKET ANALYZER OPT INFO (DEBUG MODE)\n");
     printf("File mode: \t\t%s\n", rwmode[o->rw_mode_opt]);

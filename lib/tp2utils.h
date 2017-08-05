@@ -16,7 +16,7 @@
 #define UDP_HEADER_SIZE 8           // UDP headers are always exactly 8 bytes
 
 
-typedef struct ether_header ethernet_hdr_t;
+typedef struct ether_header eth_hdr_t;
 
 /* IP header */
 typedef struct {
@@ -101,7 +101,7 @@ typedef struct {
 
 
 typedef struct {
-    ethernet_hdr_t *eth_header;
+    eth_hdr_t *eth_header;
     ip_hdr_t *ipv4_header;
     tcp_hdr_t *tcp_header;
     udp_hdr_t *udp_header;
@@ -113,7 +113,7 @@ typedef struct {
 
 void print_packet(packet_t *packet, int pck_num, int pck_size);
 
-void print_ethernet_header(const ethernet_hdr_t *eth);
+void print_ethernet_header(const eth_hdr_t *eth);
 
 void print_ip_header(const ip_hdr_t *ip);
 

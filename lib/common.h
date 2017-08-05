@@ -7,7 +7,7 @@
 
 
 #define DIV_LINE "******************************************************************"
-#define MINOR_DIV_LINE "---"
+#define MINOR_DIV_LINE ""
 
 
 #endif //TP2_COMMON_H
