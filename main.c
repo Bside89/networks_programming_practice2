@@ -1,13 +1,11 @@
-#include <stdlib.h>
-#include <pcap.h>
-#include <signal.h>
-#include <netinet/in.h>
-#include <netinet/ether.h>
-#include <string.h>
 #include "lib/tp2opt.h"
 #include "lib/tp2utils.h"
+#include "lib/debug.h"
+#include <stdlib.h>
+#include <signal.h>
+#include <string.h>
 
-#define THREADS_SIZE 7
+#define THREADS_SIZE 6
 
 
 // Flag that indicate if it is time to shutdown (switched by signal handler)
@@ -23,7 +21,7 @@ void pcap_myhandler(u_char*, const struct pcap_pkthdr*, const u_char*);
 
 void sigint_handler(int);
 
-void sigquit_handler(int);
+void sigtstp_handler(int);
 
 void pcap_debug();
 
@@ -31,18 +29,16 @@ void pcap_debug();
 int main(int argc, char *argv[]) {
 
     pthread_t threads[THREADS_SIZE];
-    int threads_counter = 0;
 
     char errbuf[PCAP_ERRBUF_SIZE];
     char filter[] = "ip";
     bpf_u_int32 mask;
     bpf_u_int32 net;
     struct bpf_program fp;
-    const u_char* packet;
     int npackets = -1;
 
     signal(SIGINT, sigint_handler);
-    signal(SIGQUIT, sigquit_handler);
+    signal(SIGTSTP, sigtstp_handler);
 
     puts(DIV_LINE);
 
@@ -67,7 +63,7 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    /* make sure we're capturing on an Ethernet device [2] */
+    // Make sure we're capturing on an Ethernet device
     if (pcap_datalink(handle) != DLT_EN10MB) {
         fprintf(stderr, "%s is not an Ethernet\n", options.interface_name);
         exit(EXIT_FAILURE);
@@ -103,40 +99,45 @@ void pcap_myhandler(u_char* args, const struct pcap_pkthdr* header,
 
     static unsigned int count = 1;
 
-    packet_t p;
-    uint32_t size_ip, size_tcp_udp;
+    packet_dump_line_t d;
+    uint32_t size_ip, size_tu;
 
-    memset(&p, 0, sizeof(p));
+    memset(&d, 0, sizeof(d));
+    memcpy(&d.line_header, header, sizeof(d.line_header));
+    memcpy(&d.content, packet, sizeof(d.content));
 
-    p.num = count++;
+    d.info.num = count++;
 
-    p.eth_header = (eth_hdr_t*)(packet);
-    p.is_ipv4 = ntohs(p.eth_header->ether_type) == ETHERTYPE_IP;
+    d.info.eth_header = (eth_hdr_t*)(d.content);
+    d.info.is_ipv4 = ntohs(d.info.eth_header->ether_type) == ETHERTYPE_IP;
 
-    /* define/compute ip header offset */
-    p.ip_header = (ip_hdr_t*)(packet + ETHERNET_HEADER_SIZE);
-    size_ip = IP_HSIZE(p.ip_header);
+    // Define/compute IP header offset
+    d.info.ip_header = (ip_hdr_t*)(d.content + ETHERNET_HEADER_SIZE);
+    size_ip = IP_HSIZE(d.info.ip_header);
     if (size_ip < IP_HEADER_MIN_SIZE) {
         printf("Invalid IP header length: %u bytes.\n", size_ip);
         return;
     }
 
-    /* determine protocol */
-    switch (p.ip_header->ip_p) {
+    // Determine protocol
+    switch (d.info.ip_header->ip_p) {
         case IPPROTO_TCP:
-            /* define/compute tcp header offset */
-            p.tcp_header = (tcp_hdr_t*)(packet + ETHERNET_HEADER_SIZE + size_ip);
-            size_tcp_udp = (uint32_t) TH_HSIZE(p.tcp_header);
-            p.is_tcp = 1;
-            if (size_tcp_udp < TCP_HEADER_MIN_SIZE) {
-                printf("Invalid TCP header length: %u bytes.\n", size_tcp_udp);
+            // Define/compute TCP header offset
+            d.info.tcp_header = (tcp_hdr_t*)(d.content + ETHERNET_HEADER_SIZE
+                                             + size_ip);
+            size_tu = (uint32_t) TH_HSIZE(d.info.tcp_header);
+            d.info.is_tcp = 1;
+            if (size_tu < TCP_HEADER_MIN_SIZE) {
+                printf("Invalid TCP header length: %u bytes.\n", size_tu);
                 return;
             }
             break;
         case IPPROTO_UDP:
-            p.udp_header = (udp_hdr_t *)(packet + ETHERNET_HEADER_SIZE + size_ip);
-            size_tcp_udp = UDP_HEADER_SIZE;
-            p.is_udp = 1;
+            // Define/compute UDP header offset
+            d.info.udp_header = (udp_hdr_t *)(d.content + ETHERNET_HEADER_SIZE
+                                              + size_ip);
+            size_tu = UDP_HEADER_SIZE;
+            d.info.is_udp = 1;
             break;
         default:
             // IPPROTO_ICMP or IPPROTO_IP etc.
@@ -144,11 +145,22 @@ void pcap_myhandler(u_char* args, const struct pcap_pkthdr* header,
     }
 
     if (options.print_payload_opt) {
-        p.payload = (u_char *) (packet + ETHERNET_HEADER_SIZE + size_ip + size_tcp_udp);
-        p.size_payload = ntohs(p.ip_header->ip_len) - (size_ip + size_tcp_udp);
-        p.print_payload = 1;
+        d.info.payload = (u_char *) (d.content + ETHERNET_HEADER_SIZE
+                                     + size_ip + size_tu);
+        d.info.size_payload = ntohs(d.info.ip_header->ip_len) - (size_ip + size_tu);
+        d.info.print_payload = 1;
     }
-    print_packet(&p, header->len);
+
+#if DEBUG >= 2
+    puts(START_DEBUG);
+    printf("Int size (reference):   %zu\n", sizeof(int));
+    printf("Packet pointer size:    %zu\n", sizeof(packet_t));
+    printf("Pkthdr struct size:     %zu\n", sizeof(struct pcap_pkthdr));
+    printf("Packet dump line size:  %zu\n", sizeof(packet_dump_line_t));
+    puts(END_DEBUG);
+#endif
+
+    print_packet(&d.info, d.line_header.len);
 }
 
 
@@ -158,7 +170,7 @@ void sigint_handler(int signum) {
 }
 
 
-void sigquit_handler(int signum) {
+void sigtstp_handler(int signum) {
     options.print_payload_opt = !options.print_payload_opt;
 }
 
@@ -179,7 +191,8 @@ void pcap_debug() {
     puts("Available devices for packet sniffing:\n");
     int count = 1;
     for (device = alldevsp; device != NULL; device = device->next)
-        printf("%02d.\t%9.9s ---- %s\n", count++, device->name, device->description);
+        printf("%02d.\t%9.9s \t %s\n", count++,
+               device->name, device->description);
     pcap_freealldevs(alldevsp);
     puts(MINOR_DIV_LINE);
     puts(DIV_LINE);
