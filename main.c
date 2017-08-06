@@ -112,7 +112,7 @@ void pcap_myhandler(u_char* args, const struct pcap_pkthdr* header,
 
     /* define/compute ip header offset */
     p.ipv4_header = (ip_hdr_t*)(packet + ETHERNET_HEADER_SIZE);
-    size_ip = IP_IHL(p.ipv4_header);
+    size_ip = IP_HSIZE(p.ipv4_header);
     if (size_ip < IP_HEADER_MIN_SIZE) {
         printf("Invalid IP header length: %u bytes.\n", size_ip);
         return;
@@ -123,7 +123,7 @@ void pcap_myhandler(u_char* args, const struct pcap_pkthdr* header,
         case IPPROTO_TCP:
             /* define/compute tcp header offset */
             p.tcp_header = (tcp_hdr_t*)(packet + ETHERNET_HEADER_SIZE + size_ip);
-            size_tcp_udp = TH_OFF(p.tcp_header);
+            size_tcp_udp = TH_HSIZE(p.tcp_header);
             p.is_tcp = 1;
             if (size_tcp_udp < TCP_HEADER_MIN_SIZE) {
                 printf("Invalid TCP header length: %u bytes.\n", size_tcp_udp);

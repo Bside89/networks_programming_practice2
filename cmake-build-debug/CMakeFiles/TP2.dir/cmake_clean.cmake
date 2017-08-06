@@ -2,6 +2,7 @@ file(REMOVE_RECURSE
   "CMakeFiles/TP2.dir/main.c.o"
   "CMakeFiles/TP2.dir/lib/tp2opt.c.o"
   "CMakeFiles/TP2.dir/lib/tp2utils.c.o"
+  "CMakeFiles/TP2.dir/lib/layers.c.o"
   "../bin/TP2.pdb"
   "../bin/TP2"
 )

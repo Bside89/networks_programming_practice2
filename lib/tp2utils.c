@@ -8,6 +8,9 @@
 #include <arpa/inet.h>
 
 
+#define CHECK_FLAG(flag, position) (flag & (1 << position))
+
+
 void print_ethernet_header(const eth_hdr_t *eth) {
 
     uint16_t protocol;
@@ -32,7 +35,7 @@ void print_ethernet_header(const eth_hdr_t *eth) {
             printf("(IPv6)");
             break;
         default:
-            printf("(Other unusual protocol)");
+            printf("(Other protocol)");
             break;
     }
     printf(" [0x%04x]\n", protocol);
@@ -40,11 +43,11 @@ void print_ethernet_header(const eth_hdr_t *eth) {
 
 
 void print_ip_header(const ip_hdr_t *ip) {
-    printf("[IPv%d] ", ip->ip_version);
-    printf("Header size: %d, ", IP_IHL(ip));
+    printf("[IPv%d] ", ip->ip_v);
+    printf("Header size: %d, ", IP_HSIZE(ip));
     printf("Total size: %d, ", ntohs(ip->ip_len));
     printf("Id: 0x%04x, ", ip->ip_id);
-    printf("Fragm. offset: %d, ", ip->ip_fragment_offset);
+    printf("Fragm. offset: %d, ", ip->ip_off);
     printf("TTL: %d, ", ip->ip_ttl);
     printf("Protocol: ");
     switch (ip->ip_p) {
@@ -55,13 +58,13 @@ void print_ip_header(const ip_hdr_t *ip) {
             printf("UDP");
             break;
         default:
-            printf("(Another other than TCP or UDP)");
+            printf("(Prther than TCP or UDP)");
             break;
     }
     printf(" [0x%02x], ", ip->ip_p);
-    printf("Header checksum: 0x%04x", ip->ip_sum);
+    printf("Header checksum: 0x%04x", ntohs(ip->ip_sum));
     putchar('\n');
-    printf("[IPv%d] ", ip->ip_version);
+    printf("[IPv%d] ", ip->ip_v);
     printf(inet_ntoa(ip->ip_src));
     printf(" > ");
     printf(inet_ntoa(ip->ip_dst));
@@ -71,24 +74,21 @@ void print_ip_header(const ip_hdr_t *ip) {
 
 void print_tcp_header(const tcp_hdr_t *tcp) {
 
-    static const char *flags_labels[] = {"NS", "CWR", "ECE", "URG", "ACK",
-                                         "PSH", "RST", "SYN", "FIN"};
-    int flags[] = {tcp->th_flag_ns,     tcp->th_flag_cwr,   tcp->th_flag_ece,
-                   tcp->th_flag_urg,    tcp->th_flag_ack,   tcp->th_flag_psh,
-                   tcp->th_flag_rst,    tcp->th_flag_syn,   tcp->th_flag_fin};
+    static const char *flags_labels[] = {"FIN", "SYN", "RST", "PSH", "ACK", "URG"};
+
     int i, print_separator = 0;
 
     printf("[TCP] ");
     printf("Port: ");
-    printf("%d > ", ntohs(tcp->th_sport));
-    printf("%d, ", ntohs(tcp->th_dport));
-    printf("Seq. num.: %"PRIu32", ", ntohl(tcp->th_seq));
-    if (flags[4]) // ACK is set
-        printf("Ack. num.: %"PRIu32", ", ntohl(tcp->th_ack));
-    printf("Header size: %d bytes, ", TH_OFF(tcp));
+    printf("%u > ", ntohs(tcp->th_sport));
+    printf("%u, ", ntohs(tcp->th_dport));
+    printf("Seq. num.: %u, ", ntohl(tcp->th_seq));
+    if (tcp->th_flags & TH_ACK) // ACK is set
+        printf("Ack. num.: %u, ", ntohl(tcp->th_ack));
+    printf("Header size: %u bytes, ", TH_HSIZE(tcp));
     printf("FLAGS: ");
-    for (i = 0; i < 9; i++) {
-        if (flags[i]) {
+    for (i = 0; i < 6; i++) {
+        if (CHECK_FLAG(tcp->th_flags, i)) {
             if (print_separator)
                 putchar('+');
             else
@@ -97,8 +97,13 @@ void print_tcp_header(const tcp_hdr_t *tcp) {
         }
     }
     printf(", ");
-    printf("Window size: %d, ", ntohs(tcp->th_win));
-    printf("Checksum: 0x%06x.", tcp->th_sum);
+    printf("Window size: %u, ", ntohs(tcp->th_win));
+    printf("Checksum: 0x%06x", ntohs(tcp->th_sum));
+    if (tcp->th_flags & TH_URG) {
+        printf(", ");
+        printf("Urgent pointer: %u", tcp->th_urp);
+    } else
+        putchar('.');
     putchar('\n');
 }
 
@@ -108,8 +113,8 @@ void print_udp_header(const udp_hdr_t *udp) {
     printf("Port: ");
     printf("%d > ", ntohs(udp->uh_sport));
     printf("%d, ", ntohs(udp->uh_dport));
-    printf("Size: %d, ", udp->uh_ulen);
-    printf("Checksum: 0x%06x.", udp->uh_sum);
+    printf("Size: %d, ", ntohs(udp->uh_ulen));
+    printf("Checksum: 0x%06x.", ntohs(udp->uh_sum));
     putchar('\n');
 }
 

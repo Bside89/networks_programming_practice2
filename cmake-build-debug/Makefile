@@ -123,6 +123,33 @@ TP2/fast:
 	$(MAKE) -f CMakeFiles/TP2.dir/build.make CMakeFiles/TP2.dir/build
 .PHONY : TP2/fast
 
+lib/layers.o: lib/layers.c.o
+
+.PHONY : lib/layers.o
+
+# target to build an object file
+lib/layers.c.o:
+	$(MAKE) -f CMakeFiles/TP2.dir/build.make CMakeFiles/TP2.dir/lib/layers.c.o
+.PHONY : lib/layers.c.o
+
+lib/layers.i: lib/layers.c.i
+
+.PHONY : lib/layers.i
+
+# target to preprocess a source file
+lib/layers.c.i:
+	$(MAKE) -f CMakeFiles/TP2.dir/build.make CMakeFiles/TP2.dir/lib/layers.c.i
+.PHONY : lib/layers.c.i
+
+lib/layers.s: lib/layers.c.s
+
+.PHONY : lib/layers.s
+
+# target to generate assembly for a file
+lib/layers.c.s:
+	$(MAKE) -f CMakeFiles/TP2.dir/build.make CMakeFiles/TP2.dir/lib/layers.c.s
+.PHONY : lib/layers.c.s
+
 lib/tp2opt.o: lib/tp2opt.c.o
 
 .PHONY : lib/tp2opt.o
@@ -213,6 +240,9 @@ help:
 	@echo "... rebuild_cache"
 	@echo "... edit_cache"
 	@echo "... TP2"
+	@echo "... lib/layers.o"
+	@echo "... lib/layers.i"
+	@echo "... lib/layers.s"
 	@echo "... lib/tp2opt.o"
 	@echo "... lib/tp2opt.i"
 	@echo "... lib/tp2opt.s"
