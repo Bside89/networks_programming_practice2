@@ -3,7 +3,6 @@
 //
 
 #include "tp2utils.h"
-#include <stdio.h>
 #include <netinet/ether.h>
 #include <arpa/inet.h>
 

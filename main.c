@@ -11,7 +11,7 @@
 
 
 // Flag that indicate if it is time to shutdown (switched by signal handler)
-volatile int is_exit = 0;
+//volatile int is_exit = 0;
 
 // Global pcap handler
 pcap_t *handle;
@@ -22,6 +22,8 @@ pa_opt options;
 void pcap_myhandler(u_char*, const struct pcap_pkthdr*, const u_char*);
 
 void sigint_handler(int);
+
+void sigquit_handler(int);
 
 void pcap_debug();
 
@@ -40,6 +42,7 @@ int main(int argc, char *argv[]) {
     int npackets = -1;
 
     signal(SIGINT, sigint_handler);
+    signal(SIGQUIT, sigquit_handler);
 
     puts(DIV_LINE);
 
@@ -101,8 +104,7 @@ void pcap_myhandler(u_char* args, const struct pcap_pkthdr* header,
     static unsigned int count = 1;
 
     packet_t p;
-    uint32_t size_ip;
-    uint32_t size_tcp_udp;
+    uint32_t size_ip, size_tcp_udp;
 
     memset(&p, 0, sizeof(p));
 
@@ -151,8 +153,13 @@ void pcap_myhandler(u_char* args, const struct pcap_pkthdr* header,
 
 
 void sigint_handler(int signum) {
-    is_exit = 1;
+    //is_exit = 1;
     pcap_breakloop(handle);
+}
+
+
+void sigquit_handler(int signum) {
+    options.print_payload_opt = !options.print_payload_opt;
 }
 
 
