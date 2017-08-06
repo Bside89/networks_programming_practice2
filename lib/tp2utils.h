@@ -11,6 +11,7 @@
 #include <netinet/ip.h>
 #include <netinet/tcp.h>
 #include <netinet/udp.h>
+#include <stdio.h>
 #include "common.h"
 
 #define ETHERNET_HEADER_SIZE    14  // Ethernet headers are always exactly 14 bytes
@@ -38,17 +39,20 @@ typedef struct udphdr udp_hdr_t;
 
 /* Complete packet */
 typedef struct {
+    uint32_t    num;
     eth_hdr_t   *eth_header;
-    ip_hdr_t    *ipv4_header;
-    tcp_hdr_t   *tcp_header;
-    udp_hdr_t   *udp_header;
+    ip_hdr_t    *ip_header;
+    union {
+        tcp_hdr_t   *tcp_header;
+        udp_hdr_t   *udp_header;
+    };
     u_char      *payload;
-    int         size_payload;
+    uint32_t    size_payload;
     short int   is_ipv4, is_tcp, is_udp, print_payload; // Flags
 } packet_t;
 
 
-void print_packet(packet_t *packet, int pck_num, int pck_size);
+void print_packet(packet_t *packet, int pck_size);
 
 void print_ethernet_header(const eth_hdr_t *eth);
 

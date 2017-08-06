@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include <stdlib.h>
 #include <pcap.h>
 #include <signal.h>
@@ -99,31 +98,33 @@ int main(int argc, char *argv[]) {
 void pcap_myhandler(u_char* args, const struct pcap_pkthdr* header,
                     const u_char* packet) {
 
-    static int count = 1;
+    static unsigned int count = 1;
 
     packet_t p;
-    int size_ip;
-    int size_tcp_udp;
+    uint32_t size_ip;
+    uint32_t size_tcp_udp;
 
     memset(&p, 0, sizeof(p));
+
+    p.num = count++;
 
     p.eth_header = (eth_hdr_t*)(packet);
     p.is_ipv4 = ntohs(p.eth_header->ether_type) == ETHERTYPE_IP;
 
     /* define/compute ip header offset */
-    p.ipv4_header = (ip_hdr_t*)(packet + ETHERNET_HEADER_SIZE);
-    size_ip = IP_HSIZE(p.ipv4_header);
+    p.ip_header = (ip_hdr_t*)(packet + ETHERNET_HEADER_SIZE);
+    size_ip = IP_HSIZE(p.ip_header);
     if (size_ip < IP_HEADER_MIN_SIZE) {
         printf("Invalid IP header length: %u bytes.\n", size_ip);
         return;
     }
 
     /* determine protocol */
-    switch(p.ipv4_header->ip_p) {
+    switch (p.ip_header->ip_p) {
         case IPPROTO_TCP:
             /* define/compute tcp header offset */
             p.tcp_header = (tcp_hdr_t*)(packet + ETHERNET_HEADER_SIZE + size_ip);
-            size_tcp_udp = TH_HSIZE(p.tcp_header);
+            size_tcp_udp = (uint32_t) TH_HSIZE(p.tcp_header);
             p.is_tcp = 1;
             if (size_tcp_udp < TCP_HEADER_MIN_SIZE) {
                 printf("Invalid TCP header length: %u bytes.\n", size_tcp_udp);
@@ -142,10 +143,10 @@ void pcap_myhandler(u_char* args, const struct pcap_pkthdr* header,
 
     if (options.print_payload_opt) {
         p.payload = (u_char *) (packet + ETHERNET_HEADER_SIZE + size_ip + size_tcp_udp);
-        p.size_payload = ntohs(p.ipv4_header->ip_len) - (size_ip + size_tcp_udp);
+        p.size_payload = ntohs(p.ip_header->ip_len) - (size_ip + size_tcp_udp);
         p.print_payload = 1;
     }
-    print_packet(&p, count++, header->len);
+    print_packet(&p, header->len);
 }
 
 

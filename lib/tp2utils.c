@@ -133,20 +133,16 @@ void print_payload(const u_char *payload, const int size_payload) {
 }
 
 
-void print_packet(packet_t *packet, int pck_num, int pck_size) {
-    if (!packet->is_ipv4) {
+void print_packet(packet_t *packet, int pck_size) {
+    if (!packet->is_ipv4 || (!packet->is_tcp && !packet->is_udp))
         return;
-    }
-    if (!packet->is_tcp && !packet->is_udp) {
-        return;
-    }
     puts(MINOR_DIV_LINE);
-    printf("Packet number:\t<%d>\n", pck_num);
+    printf("Packet number:\t<%d>\n", packet->num);
     printf("Packet length:\t%d bytes.\n", pck_size);
     puts(MINOR_DIV_LINE);
     print_ethernet_header(packet->eth_header);
     puts(MINOR_DIV_LINE);
-    print_ip_header(packet->ipv4_header);
+    print_ip_header(packet->ip_header);
     puts(MINOR_DIV_LINE);
     if (packet->is_tcp)
         print_tcp_header(packet->tcp_header);
