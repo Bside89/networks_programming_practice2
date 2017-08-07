@@ -19,7 +19,7 @@ int paopt_set(int argc, char **argv, pa_opt *o) {
 
     opterr = 0;
 
-    while ((c = getopt (argc, argv, GETOPT_OPTIONS)) != -1) {
+    while ((c = getopt(argc, argv, GETOPT_OPTIONS)) != -1) {
         switch (c) {
             case OPT_WRITE:
                 if (!netopt_is_option_valid(rw_set))
@@ -65,16 +65,7 @@ int paopt_set(int argc, char **argv, pa_opt *o) {
     }
     if (argc - optind > 0) { // Has optional <args>
         puts("Has optional arguments <args>. Ignoring for awhile.");
-        /*
-        int i, j;
-        for (i = optind; i < argc; index++) {
-            for (j = 0; j < 4; j++) {
-                if (!strcmp(argv[i], a[j])) {
-
-                }
-            }
-            printf("Opt: '%s'\n", argv[i]);
-        }*/
+        // TODO put <args> in pcap filter
     }
     if (o->debug_opt)
         paopt_debug(o);

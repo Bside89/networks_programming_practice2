@@ -55,10 +55,10 @@ typedef struct {
 
 /* Complete packet */
 typedef struct {
-    packet_t            info;
-    short int           info_is_completed;
-    struct pcap_pkthdr  line_header;
-    u_char              content[BUFSIZ];
+    packet_t            info;               // Processed info
+    short int           info_is_completed;  // Flag
+    struct pcap_pkthdr  line_header;        // Packet pcap header
+    u_char              content[BUFSIZ];    // Packet content
 } packet_dump_line_t;
 
 

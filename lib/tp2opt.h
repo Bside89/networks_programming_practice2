@@ -8,30 +8,24 @@
 
 // Options (getopt)
 
-#define GETOPT_OPTIONS "w:r:i:fd"
+#define GETOPT_OPTIONS          "w:r:i:fd"
+#define OPT_WRITE               'w'
+#define OPT_READ                'r'
+#define OPT_INTERFACE_NAME      'i'
+#define OPT_PRINT_PAYLOAD       'f'
+#define OPT_DEBUG               'd'
+#define PAOPT_OPTION_NOT_VALID  -1
 
-#define OPT_WRITE 'w'
-#define OPT_READ 'r'
-
-#define OPT_INTERFACE_NAME 'i'
-
-#define OPT_PRINT_PAYLOAD 'f'
-
-#define OPT_DEBUG 'd'
-
-#define PAOPT_OPTION_NOT_VALID -1
-
-typedef enum { READ = 0, WRITE } paopt_rw_mode;
+typedef enum { READ = 0, WRITE } paopt_rwmode;
 
 
-/* Struct containing infos about options chosen by user at startup
- * */
+/* Struct containing infos about options chosen by user at startup */
 typedef struct {
-    paopt_rw_mode rw_mode_opt;
-    char filepath[PATH_MAX];
-    char interface_name[16];
-    int print_payload_opt;
-    int debug_opt;
+    paopt_rwmode    rw_mode_opt;
+    char            filepath[PATH_MAX];
+    char            interface_name[16];
+    short int       print_payload_opt;
+    short int       debug_opt;
 } pa_opt;
 
 
