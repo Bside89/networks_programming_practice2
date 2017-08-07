@@ -1,5 +1,5 @@
 #include "lib/tp2opt.h"
-#include "lib/tp2utils.h"
+#include "lib/packet.h"
 #include "lib/debug.h"
 #include <stdlib.h>
 #include <signal.h>
@@ -106,6 +106,8 @@ void pcap_myhandler(u_char* args, const struct pcap_pkthdr* header,
     memcpy(&d.line_header, header, sizeof(d.line_header));
     memcpy(&d.content, packet, sizeof(d.content));
 
+    // TODO from here, alloc "d" in heap and send over the modules
+
     d.info.num = count++;
 
     d.info.eth_header = (eth_hdr_t*)(d.content);
@@ -134,7 +136,7 @@ void pcap_myhandler(u_char* args, const struct pcap_pkthdr* header,
             break;
         case IPPROTO_UDP:
             // Define/compute UDP header offset
-            d.info.udp_header = (udp_hdr_t *)(d.content + ETHERNET_HEADER_SIZE
+            d.info.udp_header = (udp_hdr_t*)(d.content + ETHERNET_HEADER_SIZE
                                               + size_ip);
             size_tu = UDP_HEADER_SIZE;
             d.info.is_udp = 1;
