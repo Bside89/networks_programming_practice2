@@ -4,21 +4,15 @@
 #include <ctype.h>
 #include "tp2opt.h"
 
-
 void paopt_debug(pa_opt *o);
 
 int netopt_is_option_valid(int mode);
 
-
 int paopt_set(int argc, char **argv, pa_opt *o) {
-
     int c;
     short rw_set = 0, i_set = 0, f_set = 0, db_set = 0;
-
     o->debug_opt = 0;
-
     opterr = 0;
-
     while ((c = getopt(argc, argv, GETOPT_OPTIONS)) != -1) {
         switch (c) {
             case OPT_WRITE:
@@ -69,10 +63,8 @@ int paopt_set(int argc, char **argv, pa_opt *o) {
     }
     if (o->debug_opt)
         paopt_debug(o);
-
     return 0;
 }
-
 
 int netopt_is_option_valid(int mode) {
     if (mode) {
@@ -81,7 +73,6 @@ int netopt_is_option_valid(int mode) {
     }
     return 1;
 }
-
 
 void paopt_debug(pa_opt *o) {
     const char *answer[2] = {"no", "yes"};

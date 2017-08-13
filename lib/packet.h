@@ -20,7 +20,6 @@
 #define TCP_HEADER_MIN_SIZE     20  // TCP headers are at least 20 bytes
 #define UDP_HEADER_SIZE         8   // UDP headers are always exactly 8 bytes
 
-
 /* Ethernet header */
 typedef struct ether_header eth_hdr_t;
 
@@ -37,7 +36,6 @@ typedef struct tcphdr tcp_hdr_t;
 /* UDP header */
 typedef struct udphdr udp_hdr_t;
 
-
 /* Info packet */
 typedef struct {
     uint32_t        num;
@@ -52,7 +50,6 @@ typedef struct {
     short int       is_ipv4, is_tcp, is_udp, print_payload; // Flags
 } packet_t;
 
-
 /* Complete packet */
 typedef struct {
     packet_t            info;               // Processed info
@@ -61,18 +58,20 @@ typedef struct {
     u_char              content[BUFSIZ];    // Packet content
 } packet_dump_line_t;
 
+void pkt_init(packet_dump_line_t **p);
 
-void print_packet(packet_t *packet, int pck_size);
+void pkt_free(packet_dump_line_t **p);
 
-void print_ethernet_header(const eth_hdr_t *eth);
+void pkt_print_packet(packet_t *packet, int pck_size);
 
-void print_ip_header(const ip_hdr_t *ip);
+void pkt_print_ethernet_header(const eth_hdr_t *eth);
 
-void print_tcp_header(const tcp_hdr_t *tcp);
+void pkt_print_ip_header(const ip_hdr_t *ip);
 
-void print_udp_header(const udp_hdr_t *udp);
+void pkt_print_tcp_header(const tcp_hdr_t *tcp);
 
-void print_payload(const u_char *payload, const int size_payload);
+void pkt_print_udp_header(const udp_hdr_t *udp);
 
+void pkt_print_payload(const u_char *payload, const int size_payload);
 
 #endif //TP2_TP2UTILS_H

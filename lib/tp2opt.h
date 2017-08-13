@@ -18,7 +18,6 @@
 
 typedef enum { READ = 0, WRITE } paopt_rwmode;
 
-
 /* Struct containing infos about options chosen by user at startup */
 typedef struct {
     paopt_rwmode    rw_mode_opt;
@@ -28,8 +27,6 @@ typedef struct {
     short int       debug_opt;
 } pa_opt;
 
-
 int paopt_set(int argc, char **argv, pa_opt *ns);
-
 
 #endif //TP1_TP1OPT_H

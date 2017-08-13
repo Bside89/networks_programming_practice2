@@ -5,20 +5,32 @@
 #include "packet.h"
 #include <netinet/ether.h>
 #include <arpa/inet.h>
-
+#include <stdlib.h>
 
 #define CHECK_FLAG(flag, position) (flag & (1 << position))
 
+void pkt_init(packet_dump_line_t **p) {
+    if (p == NULL)
+        exit(1);
+    *p = calloc(1, sizeof(packet_dump_line_t));
+    if (*p == NULL)
+        exit(1);
+}
 
-void print_ethernet_header(const eth_hdr_t *eth) {
+void pkt_free(packet_dump_line_t **p) {
+    if (p == NULL || *p == NULL)
+        return;
+    free(*p);
+    *p = NULL;
+}
 
+void pkt_print_ethernet_header(const eth_hdr_t *eth) {
     uint16_t protocol;
     printf("[Ethernet] ");
     printf(ether_ntoa((const struct ether_addr *) &eth->ether_shost));
     printf(" > ");
     printf(ether_ntoa((const struct ether_addr *) &eth->ether_dhost));
     putchar(' ');
-
     protocol = ntohs(eth->ether_type);
     switch (protocol) {
         case ETHERTYPE_IP:
@@ -40,8 +52,7 @@ void print_ethernet_header(const eth_hdr_t *eth) {
     printf(" [0x%04x]\n", protocol);
 }
 
-
-void print_ip_header(const ip_hdr_t *ip) {
+void pkt_print_ip_header(const ip_hdr_t *ip) {
     printf("[IPv%d] ", ip->ip_v);
     printf("Header size: %d, ", IP_HSIZE(ip));
     printf("Total size: %d, ", ntohs(ip->ip_len));
@@ -57,7 +68,7 @@ void print_ip_header(const ip_hdr_t *ip) {
             printf("UDP");
             break;
         default:
-            printf("(Prther than TCP or UDP)");
+            printf("()");
             break;
     }
     printf(" [0x%02x], ", ip->ip_p);
@@ -70,13 +81,9 @@ void print_ip_header(const ip_hdr_t *ip) {
     putchar('\n');
 }
 
-
-void print_tcp_header(const tcp_hdr_t *tcp) {
-
+void pkt_print_tcp_header(const tcp_hdr_t *tcp) {
     static const char *flags_labels[] = {"FIN", "SYN", "RST", "PSH", "ACK", "URG"};
-
     int i, print_separator = 0;
-
     printf("[TCP] ");
     printf("Port: ");
     printf("%u > ", ntohs(tcp->th_sport));
@@ -106,8 +113,7 @@ void print_tcp_header(const tcp_hdr_t *tcp) {
     putchar('\n');
 }
 
-
-void print_udp_header(const udp_hdr_t *udp) {
+void pkt_print_udp_header(const udp_hdr_t *udp) {
     printf("[UDP] ");
     printf("Port: ");
     printf("%d > ", ntohs(udp->uh_sport));
@@ -117,8 +123,7 @@ void print_udp_header(const udp_hdr_t *udp) {
     putchar('\n');
 }
 
-
-void print_payload(const u_char *payload, const int size_payload) {
+void pkt_print_payload(const u_char *payload, const int size_payload) {
     printf("[Payload (%d bytes)]\n", size_payload);
     if (size_payload > 0 && payload != NULL) {
         const u_char *temp_pointer = payload;
@@ -131,25 +136,24 @@ void print_payload(const u_char *payload, const int size_payload) {
     }
 }
 
-
-void print_packet(packet_t *packet, int pck_size) {
+void pkt_print_packet(packet_t *packet, int pck_size) {
     if (!packet->is_ipv4 || (!packet->is_tcp && !packet->is_udp))
         return;
     puts(MINOR_DIV_LINE);
     printf("Packet number:\t<%d>\n", packet->num);
     printf("Packet length:\t%d bytes.\n", pck_size);
     puts(MINOR_DIV_LINE);
-    print_ethernet_header(packet->eth_header);
+    pkt_print_ethernet_header(packet->eth_header);
     puts(MINOR_DIV_LINE);
-    print_ip_header(packet->ip_header);
+    pkt_print_ip_header(packet->ip_header);
     puts(MINOR_DIV_LINE);
     if (packet->is_tcp)
-        print_tcp_header(packet->tcp_header);
+        pkt_print_tcp_header(packet->tcp_header);
     else if (packet->is_udp)
-        print_udp_header(packet->udp_header);
+        pkt_print_udp_header(packet->udp_header);
     if (packet->print_payload) {
         puts(MINOR_DIV_LINE);
-        print_payload(packet->payload, packet->size_payload);
+        pkt_print_payload(packet->payload, packet->size_payload);
     }
     puts(MINOR_DIV_LINE);
     puts(DIV_LINE);
