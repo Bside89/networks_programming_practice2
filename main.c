@@ -105,34 +105,41 @@ int main(int argc, char *argv[]) {
 void pcap_myhandler(u_char* args, const struct pcap_pkthdr* header,
                     const u_char* packet) {
     static unsigned int count = 1;
-    packet_dump_line_t *d;
+    packet_dump_line_t d;
     uint32_t size_ip, size_tu;
+    eth_hdr_t *eth;
+    ip_hdr_t *ip;
+    tcp_hdr_t *tcp;
+    udp_hdr_t *udp;
+    u_char *payload;
 
-    pkt_init(&d);
-    pkt_bind(d, header, packet);
+    memset(&d, 0, sizeof(d));
+    memcpy(&d.line_header, header, sizeof(d.line_header));
+    memcpy(&d.content, packet, BUFSIZ);
 
-    // TODO from here, alloc "d" in heap and send over to the modules
-
-    d->info.num = count++;
-    d->info.eth_header = (eth_hdr_t*)(d->content);
-    d->info.is_ipv4 = ntohs(d->info.eth_header->ether_type) == ETHERTYPE_IP;
+    d.info.num = count++;
+    eth = (eth_hdr_t*)(d.content);
+    d.info.is_ipv4 = ntohs(eth->ether_type) == ETHERTYPE_IP;
+    d.info.eth_header = eth;
 
     // Define/compute IP header offset
-    d->info.ip_header = (ip_hdr_t*)(d->content + ETHERNET_HEADER_SIZE);
-    size_ip = IP_HSIZE(d->info.ip_header);
+    ip = (ip_hdr_t*)(d.content + ETHERNET_HEADER_SIZE);
+    size_ip = IP_HSIZE(ip);
     if (size_ip < IP_HEADER_MIN_SIZE) {
         printf("Invalid IP header length: %u bytes.\n", size_ip);
         return;
     }
+    d.info.ip_header = ip;
 
     // Determine protocol
-    switch (d->info.ip_header->ip_p) {
+    switch (ip->ip_p) {
         case IPPROTO_TCP:
             // Define/compute TCP header offset
-            d->info.tcp_header = (tcp_hdr_t*)(d->content + ETHERNET_HEADER_SIZE
+            tcp = (tcp_hdr_t*)(d.content + ETHERNET_HEADER_SIZE
                                              + size_ip);
-            size_tu = (uint32_t) TH_HSIZE(d->info.tcp_header);
-            d->info.is_tcp = 1;
+            size_tu = (uint32_t) TH_HSIZE(tcp);
+            d.info.is_tcp = 1;
+            d.info.tcp_header = tcp;
             if (size_tu < TCP_HEADER_MIN_SIZE) {
                 printf("Invalid TCP header length: %u bytes.\n", size_tu);
                 return;
@@ -140,24 +147,24 @@ void pcap_myhandler(u_char* args, const struct pcap_pkthdr* header,
             break;
         case IPPROTO_UDP:
             // Define/compute UDP header offset
-            d->info.udp_header = (udp_hdr_t*)(d->content + ETHERNET_HEADER_SIZE
+            udp = (udp_hdr_t*)(d.content + ETHERNET_HEADER_SIZE
                                               + size_ip);
             size_tu = UDP_HEADER_SIZE;
-            d->info.is_udp = 1;
+            d.info.is_udp = 1;
+            d.info.udp_header = udp;
             break;
         default:
             // IPPROTO_ICMP or IPPROTO_IP etc.
             return;
     }
     if (opts.print_payload_opt) {
-        d->info.payload = (u_char *) (d->content + ETHERNET_HEADER_SIZE
+        payload = (u_char *) (d.content + ETHERNET_HEADER_SIZE
                                      + size_ip + size_tu);
-        d->info.size_payload = ntohs(d->info.ip_header->ip_len) - (size_ip +
-                size_tu);
-        d->info.print_payload = 1;
+        d.info.size_payload = ntohs(ip->ip_len) - (size_ip + size_tu);
+        d.info.print_payload = 1;
+        d.info.payload = payload;
     }
-    pkt_print_packet(&d->info, d->line_header.len);
-    pkt_free(&d);
+    pkt_print_packet(&d.info, d.line_header.len);
 }
 
 void sigint_handler(int signum) {
