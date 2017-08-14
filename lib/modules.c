@@ -6,6 +6,7 @@
 #include "modules.h"
 #include "packet.h"
 #include "debug.h"
+#include "tp2opt.h"
 
 int pipefd[PIPES_QTT][2];
 
@@ -177,10 +178,11 @@ void* presentation_handler(void *arg) {
 void *screen_output_handler(void *arg) {
     /* Read from pipe (from Presentation)
      * Output result in screen
-     * Free memory allocated by package
+     * Write to Filewriter or free memory
      * */
     packet_dump_line_t *buf;
     ssize_t r;
+    pa_opt options = *((pa_opt*) arg);
     while (1) {
         // Read from Presentation
         r = read(pipefd[PRST_OUTPUT][0], &buf, sizeof(buf));
@@ -191,7 +193,41 @@ void *screen_output_handler(void *arg) {
             break;
         }
         // Format, output to screen
-        // Free memory allocated
+
+        if (options.rw_mode_opt == WRITE) {
+            // Write packet to Filewriter
+            r = write(pipefd[OUTPUT_WRITER][1], &buf, sizeof(buf));
+            if (r <= 0) {
+#if DEBUG >= 1
+                perror("screen_output_handler: write");
+#endif
+                break;
+            }
+        } else {
+            // Free allocated memory
+            pkt_free(&buf);
+        }
+    }
+    return NULL;
+}
+
+void *filewriter_handler(void *arg) {
+    /* Read from pipe (from Output)
+     * Write packet in file
+     * Free memory allocated by package
+     * */
+    packet_dump_line_t *buf;
+    ssize_t r;
+    while (1) {
+        r = read(pipefd[OUTPUT_WRITER][0], &buf, sizeof(buf));
+        if (r <= 0) {
+#if DEBUG >= 1
+            perror("filewriter_handler: read");
+#endif
+            break;
+        }
+        // Write packet in file
+        pkt_free(&buf); // Free memory
     }
     return NULL;
 }

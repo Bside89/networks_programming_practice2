@@ -20,6 +20,8 @@ void* presentation_handler(void *arg);
 
 void* screen_output_handler(void *arg);
 
+void* filewriter_handler(void *arg);
+
 int start_pipes();
 
 #endif //TP2_LAYERS_H
