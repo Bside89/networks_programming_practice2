@@ -4,22 +4,16 @@
 #include <ctype.h>
 #include "tp2opt.h"
 
-
 void paopt_debug(pa_opt *o);
 
 int netopt_is_option_valid(int mode);
 
-
 int paopt_set(int argc, char **argv, pa_opt *o) {
-
     int c;
     short rw_set = 0, i_set = 0, f_set = 0, db_set = 0;
-
     o->debug_opt = 0;
-
     opterr = 0;
-
-    while ((c = getopt (argc, argv, GETOPT_OPTIONS)) != -1) {
+    while ((c = getopt(argc, argv, GETOPT_OPTIONS)) != -1) {
         switch (c) {
             case OPT_WRITE:
                 if (!netopt_is_option_valid(rw_set))
@@ -65,23 +59,12 @@ int paopt_set(int argc, char **argv, pa_opt *o) {
     }
     if (argc - optind > 0) { // Has optional <args>
         puts("Has optional arguments <args>. Ignoring for awhile.");
-        /*
-        int i, j;
-        for (i = optind; i < argc; index++) {
-            for (j = 0; j < 4; j++) {
-                if (!strcmp(argv[i], a[j])) {
-
-                }
-            }
-            printf("Opt: '%s'\n", argv[i]);
-        }*/
+        // TODO put <args> in pcap filter
     }
     if (o->debug_opt)
         paopt_debug(o);
-
     return 0;
 }
-
 
 int netopt_is_option_valid(int mode) {
     if (mode) {
@@ -90,7 +73,6 @@ int netopt_is_option_valid(int mode) {
     }
     return 1;
 }
-
 
 void paopt_debug(pa_opt *o) {
     const char *answer[2] = {"no", "yes"};

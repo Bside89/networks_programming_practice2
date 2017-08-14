@@ -5,9 +5,9 @@
 #ifndef TP2_COMMON_H
 #define TP2_COMMON_H
 
-
 #define DIV_LINE "<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>"
 #define MINOR_DIV_LINE ""
 
+typedef enum { READ = 0, WRITE } rw_key_t;
 
 #endif //TP2_COMMON_H
