@@ -3,6 +3,7 @@
 //
 
 #include <libzvbi.h>
+#include "common.h"
 #include "modules.h"
 #include "packet.h"
 #include "debug.h"
@@ -19,7 +20,7 @@ void *ethernet_handler(void *arg) {
     ssize_t r;
     while (1) {
         // Read from Main
-        r = read(pipefd[MAIN_ETH][0], &buf, sizeof(buf));
+        r = read(pipefd[MAIN_ETH][READ], &buf, sizeof(buf));
         if (r <= 0) {
 #if DEBUG >= 1
             perror("ethernet_handler: read");
@@ -28,7 +29,7 @@ void *ethernet_handler(void *arg) {
         }
         // Format
         // Write to IP
-        r = write(pipefd[ETH_IP][1], &buf, sizeof(buf));
+        r = write(pipefd[ETH_IP][WRITE], &buf, sizeof(buf));
         if (r <= 0) {
 #if DEBUG >= 1
             perror("ethernet_handler: write");
@@ -48,7 +49,7 @@ void *ip_handler(void *arg) {
     ssize_t r;
     while (1) {
         // Read from Ethernet
-        r = read(pipefd[ETH_IP][0], &buf, sizeof(buf));
+        r = read(pipefd[ETH_IP][READ], &buf, sizeof(buf));
         if (r <= 0) {
 #if DEBUG >= 1
             perror("ip_handler: read");
@@ -58,7 +59,7 @@ void *ip_handler(void *arg) {
         // Format
         if (r == 1) {           // TODO edit temp conditional r == 1
             // Write to TCP
-            r = write(pipefd[IP_TCP][1], &buf, sizeof(buf));
+            r = write(pipefd[IP_TCP][WRITE], &buf, sizeof(buf));
             if (r <= 0) {
 #if DEBUG >= 1
                 perror("ip_handler: write (TCP)");
@@ -67,7 +68,7 @@ void *ip_handler(void *arg) {
             }
         } else if (r == 2) {    // TODO edit temp conditional r == 2
             // Write to UDP
-            r = write(pipefd[IP_UDP][1], &buf, sizeof(buf));
+            r = write(pipefd[IP_UDP][WRITE], &buf, sizeof(buf));
             if (r <= 0) {
 #if DEBUG >= 1
                 perror("ip_handler: write (UDP)");
@@ -88,7 +89,7 @@ void *tcp_handler(void *arg) {
     ssize_t r;
     while (1) {
         // Read from IP
-        r = read(pipefd[IP_TCP][0], &buf, sizeof(buf));
+        r = read(pipefd[IP_TCP][READ], &buf, sizeof(buf));
         if (r <= 0) {
 #if DEBUG >= 1
             perror("tcp_handler: read");
@@ -97,7 +98,7 @@ void *tcp_handler(void *arg) {
         }
         // Format
         // Write to Presentation
-        r = write(pipefd[TCP_PRST][1], &buf, sizeof(buf));
+        r = write(pipefd[TCP_PRST][WRITE], &buf, sizeof(buf));
         if (r <= 0) {
 #if DEBUG >= 1
             perror("tcp_handler: write");
@@ -117,7 +118,7 @@ void *udp_handler(void *arg) {
     ssize_t r;
     while (1) {
         // Read from IP
-        r = read(pipefd[IP_UDP][0], &buf, sizeof(buf));
+        r = read(pipefd[IP_UDP][READ], &buf, sizeof(buf));
         if (r <= 0) {
 #if DEBUG >= 1
             perror("udp_handler: read");
@@ -126,7 +127,7 @@ void *udp_handler(void *arg) {
         }
         // Format
         // Write to Presentation
-        r = write(pipefd[UDP_PRST][1], &buf, sizeof(buf));
+        r = write(pipefd[UDP_PRST][WRITE], &buf, sizeof(buf));
         if (r <= 0) {
 #if DEBUG >= 1
             perror("udp_handler: write");
@@ -146,8 +147,8 @@ void* presentation_handler(void *arg) {
     ssize_t r;
     fd_set active_fd_set, read_fd_set;
     FD_ZERO(&active_fd_set);
-    FD_SET(pipefd[TCP_PRST][0], &active_fd_set);
-    FD_SET(pipefd[UDP_PRST][0], &active_fd_set);
+    FD_SET(pipefd[TCP_PRST][READ], &active_fd_set);
+    FD_SET(pipefd[UDP_PRST][READ], &active_fd_set);
     while (1) {
         read_fd_set = active_fd_set;
         if (select(FD_SETSIZE, &read_fd_set, NULL, NULL, NULL) < 0) {
@@ -156,15 +157,15 @@ void* presentation_handler(void *arg) {
 #endif
             break;
         }
-        if (FD_ISSET(pipefd[TCP_PRST][0], &read_fd_set)) { // Received TCP
+        if (FD_ISSET(pipefd[TCP_PRST][READ], &read_fd_set)) { // Received TCP
             // Handle TCP packet
-        } else if (FD_ISSET(pipefd[UDP_PRST][0], &read_fd_set)) { // Received UDP
+        } else if (FD_ISSET(pipefd[UDP_PRST][READ], &read_fd_set)) { // Received UDP
             // Handle UDP packet
         } else { // Undefined behaviour
 
         }
         // Write to Output
-        r = write(pipefd[PRST_OUTPUT][1], &buf, sizeof(buf));
+        r = write(pipefd[PRST_OUTPUT][WRITE], &buf, sizeof(buf));
         if (r <= 0) {
 #if DEBUG >= 1
             perror("presentation_handler: write");
@@ -185,7 +186,7 @@ void *screen_output_handler(void *arg) {
     pa_opt options = *((pa_opt*) arg);
     while (1) {
         // Read from Presentation
-        r = read(pipefd[PRST_OUTPUT][0], &buf, sizeof(buf));
+        r = read(pipefd[PRST_OUTPUT][READ], &buf, sizeof(buf));
         if (r <= 0) {
 #if DEBUG >= 1
             perror("screen_output_handler: read");
@@ -196,7 +197,7 @@ void *screen_output_handler(void *arg) {
 
         if (options.rw_mode_opt == WRITE) {
             // Write packet to Filewriter
-            r = write(pipefd[OUTPUT_WRITER][1], &buf, sizeof(buf));
+            r = write(pipefd[OUTPUT_WRITER][WRITE], &buf, sizeof(buf));
             if (r <= 0) {
 #if DEBUG >= 1
                 perror("screen_output_handler: write");
@@ -219,7 +220,7 @@ void *filewriter_handler(void *arg) {
     packet_dump_line_t *buf;
     ssize_t r;
     while (1) {
-        r = read(pipefd[OUTPUT_WRITER][0], &buf, sizeof(buf));
+        r = read(pipefd[OUTPUT_WRITER][READ], &buf, sizeof(buf));
         if (r <= 0) {
 #if DEBUG >= 1
             perror("filewriter_handler: read");

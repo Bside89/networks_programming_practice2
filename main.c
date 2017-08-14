@@ -105,14 +105,17 @@ int main(int argc, char *argv[]) {
 
     // Main loop
     pcap_loop(pcaphandle, npackets, pcap_myhandler, (unsigned char*) dumpfile);
+    printf("\n\n");
 
     // Free & close resources
     pcap_freecode(&fp);
     pcap_close(pcaphandle);
-    if (opts.rw_mode_opt == WRITE)
+    if (opts.rw_mode_opt == WRITE) {
         pcap_dump_close(dumpfile);
-
-    printf("\n\nClosing program.\n\n");
+        printf("Saved file as %s.\n", opts.filepath);
+    }
+    puts("Closing program.");
+    printf("\n");
     return EXIT_SUCCESS;
 }
 

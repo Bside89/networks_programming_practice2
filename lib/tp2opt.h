@@ -16,15 +16,13 @@
 #define OPT_DEBUG               'd'
 #define PAOPT_OPTION_NOT_VALID  -1
 
-typedef enum { READ = 0, WRITE } paopt_rwmode;
-
 /* Struct containing infos about options chosen by user at startup */
 typedef struct {
-    paopt_rwmode    rw_mode_opt;
-    char            filepath[PATH_MAX];
-    char            interface_name[16];
-    short int       print_payload_opt;
-    short int       debug_opt;
+    rw_key_t    rw_mode_opt;
+    char        filepath[PATH_MAX];
+    char        interface_name[16];
+    short int   print_payload_opt;
+    short int   debug_opt;
 } pa_opt;
 
 int paopt_set(int argc, char **argv, pa_opt *ns);
