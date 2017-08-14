@@ -30,12 +30,12 @@ void pcap_debug(void);
 int main(int argc, char *argv[]) {
     pthread_t threads[THREADS_SIZE];
     char errbuf[PCAP_ERRBUF_SIZE];
-    char filter[] = "ip";
+    char filter[] = "ip and (tcp or udp)";
     bpf_u_int32 mask;
     bpf_u_int32 net;
     struct bpf_program fp;
     int npackets = -1;
-    pcap_dumper_t *dumpfile;
+    pcap_dumper_t *dumpfile = NULL;
 
     signal(SIGINT, sigint_handler);
     signal(SIGTSTP, sigtstp_handler);
@@ -66,12 +66,16 @@ int main(int argc, char *argv[]) {
         net = mask = 0;
     }
     // Open pcap for sniffing
-    pcaphandle = pcap_open_live(opts.interface_name, BUFSIZ, 1, 1000, errbuf);
+    if (opts.rw_mode_opt == WRITE)
+        pcaphandle = pcap_open_live(opts.interface_name, BUFSIZ, 1, 1000, errbuf);
+    else
+        pcaphandle = pcap_open_offline(opts.filepath, errbuf);
     if (pcaphandle == NULL) {
         fprintf(stderr, "Couldn't open device %s: %s\n",
                 opts.interface_name, errbuf);
         exit(EXIT_FAILURE);
     }
+
     // Make sure we're capturing on an Ethernet device
     if (pcap_datalink(pcaphandle) != DLT_EN10MB) {
         fprintf(stderr, "%s is not an Ethernet\n", opts.interface_name);
@@ -89,22 +93,24 @@ int main(int argc, char *argv[]) {
                 filter, pcap_geterr(pcaphandle));
         exit(EXIT_FAILURE);
     }
-
-    dumpfile = pcap_dump_open(pcaphandle, opts.filepath);
-    if (dumpfile == NULL) {
-        fprintf(stderr, "Error opening output file.\n");
-        exit(EXIT_FAILURE);
+    if (opts.rw_mode_opt == WRITE) {
+        dumpfile = pcap_dump_open(pcaphandle, opts.filepath);
+        if (dumpfile == NULL) {
+            fprintf(stderr, "Error opening output file.\n");
+            exit(EXIT_FAILURE);
+        }
     }
     // Debug
     if (opts.debug_opt) pcap_debug();
 
     // Main loop
-    pcap_loop(pcaphandle, npackets, pcap_myhandler, (unsigned char*)dumpfile);
+    pcap_loop(pcaphandle, npackets, pcap_myhandler, (unsigned char*) dumpfile);
 
-    // Free & close
+    // Free & close resources
     pcap_freecode(&fp);
     pcap_close(pcaphandle);
-    pcap_dump_close(dumpfile);
+    if (opts.rw_mode_opt == WRITE)
+        pcap_dump_close(dumpfile);
 
     printf("\n\nClosing program.\n\n");
     return EXIT_SUCCESS;
@@ -173,7 +179,8 @@ void pcap_myhandler(u_char* dumpfile, const struct pcap_pkthdr* header,
         d.info.payload = payload;
     }
     pkt_print_packet(&d.info, d.line_header.len);
-    pcap_dump(dumpfile, header, packet);
+    if (opts.rw_mode_opt == WRITE)
+        pcap_dump(dumpfile, header, packet);
 }
 
 void sigint_handler(int signum) {
