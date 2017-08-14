@@ -109,8 +109,7 @@ void pcap_myhandler(u_char* args, const struct pcap_pkthdr* header,
     uint32_t size_ip, size_tu;
 
     pkt_init(&d);
-    memcpy(&d->line_header, header, sizeof(struct pcap_pkthdr));
-    memcpy(&d->content, packet, BUFSIZ);
+    pkt_bind(d, header, packet);
 
     // TODO from here, alloc "d" in heap and send over to the modules
 

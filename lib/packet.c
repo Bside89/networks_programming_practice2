@@ -6,6 +6,7 @@
 #include <netinet/ether.h>
 #include <arpa/inet.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define CHECK_FLAG(flag, position) (flag & (1 << position))
 
@@ -15,6 +16,14 @@ void pkt_init(packet_dump_line_t **p) {
     *p = calloc(1, sizeof(packet_dump_line_t));
     if (*p == NULL)
         exit(1);
+}
+
+void pkt_bind(packet_dump_line_t *p, const struct pcap_pkthdr *header,
+              const u_char *content) {
+    if (p == NULL)
+        return;
+    memcpy(&p->line_header, header, sizeof(struct pcap_pkthdr));
+    memcpy(&p->content, content, header->len);
 }
 
 void pkt_free(packet_dump_line_t **p) {

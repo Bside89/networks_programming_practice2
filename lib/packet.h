@@ -60,6 +60,9 @@ typedef struct {
 
 void pkt_init(packet_dump_line_t **p);
 
+void pkt_bind(packet_dump_line_t *p, const struct pcap_pkthdr *header,
+              const u_char *content);
+
 void pkt_free(packet_dump_line_t **p);
 
 void pkt_print_packet(packet_t *packet, int pck_size);
