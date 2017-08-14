@@ -35,6 +35,7 @@ int main(int argc, char *argv[]) {
     bpf_u_int32 net;
     struct bpf_program fp;
     int npackets = -1;
+    pcap_dumper_t *dumpfile;
 
     signal(SIGINT, sigint_handler);
     signal(SIGTSTP, sigtstp_handler);
@@ -88,21 +89,28 @@ int main(int argc, char *argv[]) {
                 filter, pcap_geterr(pcaphandle));
         exit(EXIT_FAILURE);
     }
+
+    dumpfile = pcap_dump_open(pcaphandle, opts.filepath);
+    if (dumpfile == NULL) {
+        fprintf(stderr, "Error opening output file.\n");
+        exit(EXIT_FAILURE);
+    }
     // Debug
     if (opts.debug_opt) pcap_debug();
 
     // Main loop
-    pcap_loop(pcaphandle, npackets, pcap_myhandler, NULL);
+    pcap_loop(pcaphandle, npackets, pcap_myhandler, (unsigned char*)dumpfile);
 
     // Free & close
     pcap_freecode(&fp);
     pcap_close(pcaphandle);
+    pcap_dump_close(dumpfile);
 
     printf("\n\nClosing program.\n\n");
     return EXIT_SUCCESS;
 }
 
-void pcap_myhandler(u_char* args, const struct pcap_pkthdr* header,
+void pcap_myhandler(u_char* dumpfile, const struct pcap_pkthdr* header,
                     const u_char* packet) {
     static unsigned int count = 1;
     packet_dump_line_t d;
@@ -165,6 +173,7 @@ void pcap_myhandler(u_char* args, const struct pcap_pkthdr* header,
         d.info.payload = payload;
     }
     pkt_print_packet(&d.info, d.line_header.len);
+    pcap_dump(dumpfile, header, packet);
 }
 
 void sigint_handler(int signum) {
