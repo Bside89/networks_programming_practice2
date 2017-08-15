@@ -1,3 +1,4 @@
+#include "lib/common.h"
 #include "lib/modules.h"
 #include "lib/tp2opt.h"
 #include "lib/packet.h"
@@ -17,6 +18,8 @@ pcap_t *pcaphandle;
 pa_opt opts;
 
 int pipefd[PIPES_QTT][2];
+
+short print_payload_flag;
 
 void pcap_myhandler(u_char*, const struct pcap_pkthdr*, const u_char*);
 
@@ -57,6 +60,8 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "A error occurred. Exiting application.\n");
         return EXIT_FAILURE;
     }
+    print_payload_flag = opts.print_payload_opt;
+
     // Get IPv4 number and netmask for device
     if (pcap_lookupnet(opts.interface_name, &net, &mask, errbuf) == -1) {
         fprintf(stderr, "Couldn't get netmask for device %s: %s\n",
@@ -219,7 +224,7 @@ void sigint_handler(int signum) {
 }
 
 void sigtstp_handler(int signum) {
-    opts.print_payload_opt = !opts.print_payload_opt;
+    print_payload_flag = !print_payload_flag;
 }
 
 void pcap_debug() {

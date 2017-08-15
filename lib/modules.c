@@ -12,6 +12,8 @@
 
 int pipefd[PIPES_QTT][2];
 
+short print_payload_flag;
+
 void *ethernet_handler(void *arg) {
     /* Read from pipe (from Main) -- CHECKED
      * Format ethernet header
@@ -20,7 +22,9 @@ void *ethernet_handler(void *arg) {
     packet_dump_line_t buf;
     ssize_t r;
     eth_hdr_t *eth;
+#if DEBUG >= 2
     puts("Initializing ethernet_handler...");
+#endif
     while (1) {
         // Read from Main
         memset(&buf, 0, sizeof(buf));
@@ -44,7 +48,9 @@ void *ethernet_handler(void *arg) {
             break;
         }
     }
+#if DEBUG >= 2
     puts("Closing ethernet_handler...");
+#endif
     return NULL;
 }
 
@@ -56,7 +62,9 @@ void *ip_handler(void *arg) {
     packet_dump_line_t buf;
     ssize_t r;
     ip_hdr_t *ip;
+#if DEBUG >= 2
     puts("Initializing ip_handler...");
+#endif
     while (1) {
         // Read from Ethernet
         memset(&buf, 0, sizeof(buf));
@@ -102,7 +110,9 @@ void *ip_handler(void *arg) {
                 return NULL;
         }
     }
+#if DEBUG >= 2
     puts("Closing ip_handler...");
+#endif
     return NULL;
 }
 
@@ -114,7 +124,9 @@ void *tcp_handler(void *arg) {
     packet_dump_line_t buf;
     ssize_t r;
     tcp_hdr_t *tcp;
+#if DEBUG >= 2
     puts("Initializing tcp_handler...");
+#endif
     while (1) {
         // Read from IP
         memset(&buf, 0, sizeof(buf));
@@ -140,7 +152,9 @@ void *tcp_handler(void *arg) {
             break;
         }
     }
+#if DEBUG >= 2
     puts("Closing tcp_handler...");
+#endif
     return NULL;
 }
 
@@ -152,7 +166,9 @@ void *udp_handler(void *arg) {
     packet_dump_line_t buf;
     ssize_t r;
     udp_hdr_t *udp;
+#if DEBUG >= 2
     puts("Initializing udp_handler...");
+#endif
     while (1) {
         // Read from IP
         memset(&buf, 0, sizeof(buf));
@@ -178,7 +194,9 @@ void *udp_handler(void *arg) {
             break;
         }
     }
+#if DEBUG >= 2
     puts("Closing udp_handler...");
+#endif
     return NULL;
 }
 
@@ -194,7 +212,9 @@ void* presentation_handler(void *arg) {
     FD_ZERO(&active_fd_set);
     FD_SET(pipefd[TCP_PRST][READ], &active_fd_set);
     FD_SET(pipefd[UDP_PRST][READ], &active_fd_set);
+#if DEBUG >= 2
     puts("Initializing presentation_handler...");
+#endif
     while (1) {
         read_fd_set = active_fd_set;
         if (select(FD_SETSIZE, &read_fd_set, NULL, NULL, NULL) < 0) {
@@ -242,7 +262,9 @@ void* presentation_handler(void *arg) {
             break;
         }
     }
+#if DEBUG >= 2
     puts("Closing presentation_handler...");
+#endif
     return NULL;
 }
 
@@ -254,7 +276,9 @@ void *screen_output_handler(void *arg) {
     packet_dump_line_t buf;
     ssize_t r;
     pa_opt options = *((pa_opt*) arg);
+#if DEBUG >= 2
     puts("Initializing screen_output_handler...");
+#endif
     while (1) {
         // Read from Presentation
         memset(&buf, 0, sizeof(buf));
@@ -266,9 +290,12 @@ void *screen_output_handler(void *arg) {
             break;
         }
         // Format, output to screen
+        buf.info.print_payload = print_payload_flag;
         pkt_print_packet(&buf);
     }
+#if DEBUG >= 2
     puts("Closing screen_output_handler...");
+#endif
     return NULL;
 }
 
@@ -286,9 +313,15 @@ int start_pipes() {
 }
 
 void close_modules() {
+    ssize_t r;
     int i;
-    for (i = 0; i < PIPES_QTT; i++)
-        write(pipefd[i][WRITE], '\0', 0);
+    for (i = 0; i < PIPES_QTT; i++) {
+        r = write(pipefd[i][WRITE], '\0', 0);
+#if DEBUG >= 2
+        if (r <= 0)
+            printf("Can't send shutdown byte to thread #%d\n", i);
+#endif
+    }
     for (i = 0; i < PIPES_QTT; i++) {
         close(pipefd[i][READ]);
         close(pipefd[i][WRITE]);

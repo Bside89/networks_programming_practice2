@@ -10,4 +10,7 @@
 
 typedef enum { READ = 0, WRITE } rw_key_t;
 
+extern short print_payload_flag;
+extern short shutdown_flag;
+
 #endif //TP2_COMMON_H
