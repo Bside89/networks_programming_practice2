@@ -13,6 +13,7 @@
 int pipefd[PIPES_QTT][2];
 
 short print_payload_flag;
+short shutdown_flag;
 
 void *ethernet_handler(void *arg) {
     /* Read from pipe (from Main) -- CHECKED
@@ -25,7 +26,7 @@ void *ethernet_handler(void *arg) {
 #if DEBUG >= 2
     puts("Initializing ethernet_handler...");
 #endif
-    while (1) {
+    while (!shutdown_flag) {
         // Read from Main
         memset(&buf, 0, sizeof(buf));
         r = read(pipefd[MAIN_ETH][READ], &buf, sizeof(buf));
@@ -65,7 +66,7 @@ void *ip_handler(void *arg) {
 #if DEBUG >= 2
     puts("Initializing ip_handler...");
 #endif
-    while (1) {
+    while (!shutdown_flag) {
         // Read from Ethernet
         memset(&buf, 0, sizeof(buf));
         r = read(pipefd[ETH_IP][READ], &buf, sizeof(buf));
@@ -127,7 +128,7 @@ void *tcp_handler(void *arg) {
 #if DEBUG >= 2
     puts("Initializing tcp_handler...");
 #endif
-    while (1) {
+    while (!shutdown_flag) {
         // Read from IP
         memset(&buf, 0, sizeof(buf));
         r = read(pipefd[IP_TCP][READ], &buf, sizeof(buf));
@@ -169,7 +170,7 @@ void *udp_handler(void *arg) {
 #if DEBUG >= 2
     puts("Initializing udp_handler...");
 #endif
-    while (1) {
+    while (!shutdown_flag) {
         // Read from IP
         memset(&buf, 0, sizeof(buf));
         r = read(pipefd[IP_UDP][READ], &buf, sizeof(buf));
@@ -215,7 +216,7 @@ void* presentation_handler(void *arg) {
 #if DEBUG >= 2
     puts("Initializing presentation_handler...");
 #endif
-    while (1) {
+    while (!shutdown_flag) {
         read_fd_set = active_fd_set;
         if (select(FD_SETSIZE, &read_fd_set, NULL, NULL, NULL) < 0) {
 #if DEBUG >= 1
@@ -279,7 +280,7 @@ void *screen_output_handler(void *arg) {
 #if DEBUG >= 2
     puts("Initializing screen_output_handler...");
 #endif
-    while (1) {
+    while (!shutdown_flag) {
         // Read from Presentation
         memset(&buf, 0, sizeof(buf));
         r = read(pipefd[PRST_OUTPUT][READ], &buf, sizeof(buf));

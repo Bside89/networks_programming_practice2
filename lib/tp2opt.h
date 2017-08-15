@@ -8,12 +8,13 @@
 
 // Options (getopt)
 
-#define GETOPT_OPTIONS          "w:r:i:fd"
+#define GETOPT_OPTIONS          "w:r:i:fdt"
 #define OPT_WRITE               'w'
 #define OPT_READ                'r'
 #define OPT_INTERFACE_NAME      'i'
 #define OPT_PRINT_PAYLOAD       'f'
 #define OPT_DEBUG               'd'
+#define OPT_PRINT_REAL_TIME     't'
 
 #define PAOPT_OPTION_NOT_VALID  -1
 
@@ -28,6 +29,7 @@ typedef struct {
     char        interface_name[INTERFACE_SIZE];
     char        filter[FILTER_SIZE];
     short int   print_payload_opt;
+    short int   print_irt;
     short int   debug_opt;
 } pa_opt;
 

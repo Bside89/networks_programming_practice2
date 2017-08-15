@@ -20,6 +20,7 @@ pa_opt opts;
 int pipefd[PIPES_QTT][2];
 
 short print_payload_flag;
+short shutdown_flag;
 
 void pcap_myhandler(u_char*, const struct pcap_pkthdr*, const u_char*);
 
@@ -60,7 +61,10 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "A error occurred. Exiting application.\n");
         return EXIT_FAILURE;
     }
+
+    // Set flags
     print_payload_flag = opts.print_payload_opt;
+    shutdown_flag = 0;
 
     // Get IPv4 number and netmask for device
     if (pcap_lookupnet(opts.interface_name, &net, &mask, errbuf) == -1) {
@@ -119,7 +123,6 @@ int main(int argc, char *argv[]) {
 
     // Main loop
     pcap_loop(pcaphandle, npackets, pcap_myhandler, (unsigned char*) dumpfile);
-    printf("\n\n");
 
     // Free & close resources
     pcap_freecode(&fp);
@@ -128,6 +131,8 @@ int main(int argc, char *argv[]) {
         pcap_dump_close(dumpfile);
         printf("Saved file as %s.\n", opts.file_path);
     }
+    sleep(2);
+    printf("\n\n");
     puts("Closing threads...");
     close_modules();
     int i;
@@ -211,7 +216,7 @@ void pcap_myhandler(u_char* dumpfile, const struct pcap_pkthdr* header,
     elapsed_time = d.line_header.ts;
     if (opts.rw_mode_opt == WRITE) {
         pcap_dump(dumpfile, header, packet);
-    } else {
+    } else if (opts.print_irt) {
         nanosleep(&d.timedelta, NULL);
     }
     // TODO from here, write packet 'd' to MAIN_ETH pipe
@@ -219,7 +224,7 @@ void pcap_myhandler(u_char* dumpfile, const struct pcap_pkthdr* header,
 }
 
 void sigint_handler(int signum) {
-    //is_exit = 1;
+    shutdown_flag = 1;
     pcap_breakloop(pcaphandle);
 }
 

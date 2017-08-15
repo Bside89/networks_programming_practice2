@@ -10,7 +10,8 @@ int netopt_is_option_valid(int mode);
 
 int paopt_set(int argc, char **argv, pa_opt *o) {
     int c;
-    short rw_set = 0, i_set = 0, f_set = 0, db_set = 0;
+    short rw_set = 0, i_set = 0, f_set = 0, t_set = 0, db_set = 0;
+    o->print_irt = 0;
     o->debug_opt = 0;
     opterr = 0;
     strcpy(o->filter, FILTER_DEFAULT_ARGS);
@@ -41,6 +42,12 @@ int paopt_set(int argc, char **argv, pa_opt *o) {
                     return PAOPT_OPTION_NOT_VALID;
                 o->print_payload_opt = 1;
                 f_set = 1;
+                break;
+            case OPT_PRINT_REAL_TIME:
+                if (!netopt_is_option_valid(t_set))
+                    return PAOPT_OPTION_NOT_VALID;
+                o->print_irt = 1;
+                t_set = 1;
                 break;
             case OPT_DEBUG:
                 if (!netopt_is_option_valid(db_set))
@@ -84,6 +91,7 @@ void paopt_debug(pa_opt *o) {
     printf("File path: \t\t%s\n", o->file_path);
     printf("Interface name: \t%s\n", o->interface_name);
     printf("Print packet load: \t%s\n", answer[o->print_payload_opt]);
+    printf("Print in real time: \t%s\n", answer[o->print_irt]);
     puts(MINOR_DIV_LINE);
     puts(DIV_LINE);
 }
