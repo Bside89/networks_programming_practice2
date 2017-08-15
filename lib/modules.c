@@ -80,8 +80,10 @@ void *ip_handler(void *arg) {
         ip = (ip_hdr_t*)(buf.content + ETHERNET_HEADER_SIZE);
         buf.info.size_ip = IP_HSIZE(ip);
         if (buf.info.size_ip < IP_HEADER_MIN_SIZE) {
+#if DEBUG >= 1
             printf("Invalid IP header length: %u bytes.\n", buf.info.size_ip);
-            break;
+#endif
+            continue;
         }
         buf.info.is_ipv4 = 1;
         memcpy(&buf.info.ip_header, ip, buf.info.size_ip);
@@ -108,7 +110,7 @@ void *ip_handler(void *arg) {
                 break;
             default:
                 // IPPROTO_ICMP or IPPROTO_IP etc.
-                return NULL;
+                break;
         }
     }
 #if DEBUG >= 2

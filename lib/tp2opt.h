@@ -20,7 +20,6 @@
 
 #define INTERFACE_SIZE          16
 #define FILTER_SIZE             256
-#define FILTER_DEFAULT_ARGS     "ip and (tcp or udp)"
 
 /* Struct containing infos about options chosen by user at startup */
 typedef struct {

@@ -11,10 +11,8 @@ int netopt_is_option_valid(int mode);
 int paopt_set(int argc, char **argv, pa_opt *o) {
     int c;
     short rw_set = 0, i_set = 0, f_set = 0, t_set = 0, db_set = 0;
-    o->print_irt = 0;
-    o->debug_opt = 0;
+    memset(o, 0, sizeof(*o));
     opterr = 0;
-    strcpy(o->filter, FILTER_DEFAULT_ARGS);
     while ((c = getopt(argc, argv, GETOPT_OPTIONS)) != -1) {
         switch (c) {
             case OPT_WRITE:
@@ -66,8 +64,12 @@ int paopt_set(int argc, char **argv, pa_opt *o) {
         }
     }
     if (argc - optind > 0) { // Has optional <args>
-        puts("Has optional arguments <args>. Ignoring for awhile.");
-        // TODO put <args> in pcap filter
+        int index;
+        for (index = optind; index < argc; index++) {
+            strcat(o->filter, argv[index]);
+            if (index < argc - 1)
+                strcat(o->filter, " ");
+        }
     }
     if (o->debug_opt)
         paopt_debug(o);
@@ -87,11 +89,12 @@ void paopt_debug(pa_opt *o) {
     const char *rwmode[2] = {"read", "write"};
     puts(MINOR_DIV_LINE);
     puts("PACKET ANALYZER OPT INFO (DEBUG MODE)\n");
-    printf("File mode: \t\t%s\n", rwmode[o->rw_mode_opt]);
-    printf("File path: \t\t%s\n", o->file_path);
-    printf("Interface name: \t%s\n", o->interface_name);
-    printf("Print packet load: \t%s\n", answer[o->print_payload_opt]);
-    printf("Print in real time: \t%s\n", answer[o->print_irt]);
+    printf("File mode:          <%s>\n", rwmode[o->rw_mode_opt]);
+    printf("File path:          <%s>\n", o->file_path);
+    printf("Interface name:     <%s>\n", o->interface_name);
+    printf("Pcap filter:        <%s>\n", o->filter);
+    printf("Print packet load:  <%s>\n", answer[o->print_payload_opt]);
+    printf("Print in real time: <%s>\n", answer[o->print_irt]);
     puts(MINOR_DIV_LINE);
     puts(DIV_LINE);
 }

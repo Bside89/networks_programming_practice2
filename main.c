@@ -44,18 +44,6 @@ int main(int argc, char *argv[]) {
 
     puts(DIV_LINE);
 
-#if DEBUG >= 2
-    puts(START_DEBUG);
-    printf("Int size (reference):  %zu\n", sizeof(int));
-    printf("Packet struct size:    %zu\n", sizeof(packet_t));
-    printf("Packet pointer size:   %zu\n", sizeof(packet_t*));
-    printf("Pkthdr struct size:    %zu\n", sizeof(struct pcap_pkthdr));
-    printf("Packet dump line size: %zu\n", sizeof(packet_dump_line_t));
-    printf("Packet dump pointer:   %zu\n", sizeof(packet_dump_line_t*));
-    puts(END_DEBUG);
-    puts(DIV_LINE);
-#endif
-
     // Set options for application
     if (paopt_set(argc, argv, &opts) < 0) {
         fprintf(stderr, "A error occurred. Exiting application.\n");
