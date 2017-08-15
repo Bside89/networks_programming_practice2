@@ -104,6 +104,7 @@ int main(int argc, char *argv[]) {
     //if (opts.debug_opt) pcap_debug();
 
     // Initialize threads
+    start_pipes();
     pthread_create(&threads[0], NULL, ethernet_handler, NULL);
     pthread_create(&threads[1], NULL, ip_handler, NULL);
     pthread_create(&threads[2], NULL, tcp_handler, NULL);
@@ -123,9 +124,11 @@ int main(int argc, char *argv[]) {
         printf("Saved file as %s.\n", opts.file_path);
     }
     puts("Closing threads...");
+    close_modules();
     int i;
     for (i = 0; i < THREADS_SIZE; i++)
-        pthread_cancel(threads[i]); // TODO temporary; remove as soon as possible
+        if (i != 4) // TODO temporary; remove as soon as possible
+            pthread_join(threads[i], NULL);
     puts("Closing program...");
     printf("\n");
     return EXIT_SUCCESS;

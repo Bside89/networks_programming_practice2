@@ -260,7 +260,10 @@ int start_pipes() {
 
 void close_modules() {
     int i;
-    for (i = 0; i < PIPES_QTT; i++) {
+    for (i = 0; i < PIPES_QTT; i++)
         write(pipefd[i][WRITE], '\0', 0);
+    for (i = 0; i < PIPES_QTT; i++) {
+        close(pipefd[i][READ]);
+        close(pipefd[i][WRITE]);
     }
 }
