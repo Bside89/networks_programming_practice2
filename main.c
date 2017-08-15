@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <signal.h>
 #include <string.h>
+#include <time.h>
 
 #define THREADS_SIZE 6
 
@@ -121,7 +122,9 @@ int main(int argc, char *argv[]) {
 
 void pcap_myhandler(u_char* dumpfile, const struct pcap_pkthdr* header,
                     const u_char* packet) {
-    static unsigned int count = 1;
+    static unsigned int count = 1, is_first_packet = 1;
+    static struct timeval timedelta = {0, 0}, elapsedtime = {0, 0};
+    struct timespec nanodeltatime;
     packet_dump_line_t d;
     uint32_t size_ip, size_tu;
     eth_hdr_t *eth;
@@ -181,9 +184,21 @@ void pcap_myhandler(u_char* dumpfile, const struct pcap_pkthdr* header,
         d.info.print_payload = 1;
         d.info.payload = payload;
     }
-    pkt_print_packet(&d.info, d.line_header.len);
-    if (opts.rw_mode_opt == WRITE)
+    if (is_first_packet) {
+        is_first_packet = 0;
+    } else {
+        timersub(&d.line_header.ts, &elapsedtime, &timedelta);
+    }
+    elapsedtime = d.line_header.ts;
+    printf("Timedelta: %ld.%06ld.\n", timedelta.tv_sec, timedelta.tv_usec);
+    if (opts.rw_mode_opt == WRITE) {
         pcap_dump(dumpfile, header, packet);
+    } else {
+        nanodeltatime.tv_sec = timedelta.tv_sec;
+        nanodeltatime.tv_nsec = timedelta.tv_usec*1000;
+        nanosleep(&nanodeltatime, NULL);
+    }
+    pkt_print_packet(&d.info, d.line_header.len);
 }
 
 void sigint_handler(int signum) {
