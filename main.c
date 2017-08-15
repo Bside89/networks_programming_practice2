@@ -150,7 +150,7 @@ void pcap_myhandler(u_char* dumpfile, const struct pcap_pkthdr* header,
     memcpy(&d.line_header, header, sizeof(d.line_header));
     memcpy(&d.content, packet, BUFSIZ);
 
-    d.info.num = count++;
+    d.info.num = count++;/*
     eth = (eth_hdr_t*)(d.content);
     d.info.is_ipv4 = ntohs(eth->ether_type) == ETHERTYPE_IP;
     memcpy(&d.info.eth_header, eth, ETHERNET_HEADER_SIZE);
@@ -196,7 +196,7 @@ void pcap_myhandler(u_char* dumpfile, const struct pcap_pkthdr* header,
         d.info.size_payload = ntohs(ip->ip_len) - (size_ip + size_tu);
         d.info.print_payload = 1;
         memcpy(d.info.payload, payload, d.info.size_payload);
-    }
+    }*/
     if (is_first_packet) {
         is_first_packet = 0;
     } else {
@@ -209,7 +209,8 @@ void pcap_myhandler(u_char* dumpfile, const struct pcap_pkthdr* header,
     } else {
         nanosleep(&d.timedelta, NULL);
     }
-    pkt_print_packet(&d);
+    // TODO from here, write packet 'd' to MAIN_ETH pipe
+    write(pipefd[MAIN_ETH][WRITE], &d, sizeof(d));
 }
 
 void sigint_handler(int signum) {

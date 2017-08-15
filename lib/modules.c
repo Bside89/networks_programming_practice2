@@ -3,6 +3,7 @@
 //
 
 #include <libzvbi.h>
+#include <string.h>
 #include "common.h"
 #include "modules.h"
 #include "packet.h"
@@ -16,11 +17,13 @@ void *ethernet_handler(void *arg) {
      * Format ethernet header
      * Write on pipe to IP -- CHECKED
      * */
-    packet_dump_line_t *buf;
+    packet_dump_line_t buf;
     ssize_t r;
+    eth_hdr_t *eth;
     puts("Initializing ethernet_handler...");
     while (1) {
         // Read from Main
+        memset(&buf, 0, sizeof(buf));
         r = read(pipefd[MAIN_ETH][READ], &buf, sizeof(buf));
         if (r <= 0) {
 #if DEBUG >= 1
@@ -29,6 +32,9 @@ void *ethernet_handler(void *arg) {
             break;
         }
         // Format
+        eth = (eth_hdr_t*)(buf.content);
+        buf.info.is_ipv4 = ntohs(eth->ether_type) == ETHERTYPE_IP;
+        memcpy(&buf.info.eth_header, eth, ETHERNET_HEADER_SIZE);
         // Write to IP
         r = write(pipefd[ETH_IP][WRITE], &buf, sizeof(buf));
         if (r <= 0) {
@@ -47,11 +53,13 @@ void *ip_handler(void *arg) {
      * Format IP header
      * Write on pipe to TCP or UDP
      * */
-    packet_dump_line_t *buf;
+    packet_dump_line_t buf;
     ssize_t r;
+    ip_hdr_t *ip;
     puts("Initializing ip_handler...");
     while (1) {
         // Read from Ethernet
+        memset(&buf, 0, sizeof(buf));
         r = read(pipefd[ETH_IP][READ], &buf, sizeof(buf));
         if (r <= 0) {
 #if DEBUG >= 1
@@ -60,24 +68,38 @@ void *ip_handler(void *arg) {
             break;
         }
         // Format
-        if (r == 1) {           // TODO edit temp conditional r == 1
-            // Write to TCP
-            r = write(pipefd[IP_TCP][WRITE], &buf, sizeof(buf));
-            if (r <= 0) {
+        ip = (ip_hdr_t*)(buf.content + ETHERNET_HEADER_SIZE);
+        buf.info.size_ip = IP_HSIZE(ip);
+        if (buf.info.size_ip < IP_HEADER_MIN_SIZE) {
+            printf("Invalid IP header length: %u bytes.\n", buf.info.size_ip);
+            break;
+        }
+        buf.info.is_ipv4 = 1;
+        memcpy(&buf.info.ip_header, ip, buf.info.size_ip);
+        switch (ip->ip_p) {
+            case IPPROTO_TCP:
+                // Write to TCP
+                r = write(pipefd[IP_TCP][WRITE], &buf, sizeof(buf));
+                if (r <= 0) {
 #if DEBUG >= 1
-                perror("ip_handler: write (TCP)");
+                    perror("ip_handler: write (TCP)");
 #endif
+                    break;
+                }
                 break;
-            }
-        } else if (r == 2) {    // TODO edit temp conditional r == 2
-            // Write to UDP
-            r = write(pipefd[IP_UDP][WRITE], &buf, sizeof(buf));
-            if (r <= 0) {
+            case IPPROTO_UDP:
+                // Write to UDP
+                r = write(pipefd[IP_UDP][WRITE], &buf, sizeof(buf));
+                if (r <= 0) {
 #if DEBUG >= 1
-                perror("ip_handler: write (UDP)");
+                    perror("ip_handler: write (UDP)");
 #endif
+                    break;
+                }
                 break;
-            }
+            default:
+                // IPPROTO_ICMP or IPPROTO_IP etc.
+                return NULL;
         }
     }
     puts("Closing ip_handler...");
@@ -89,11 +111,13 @@ void *tcp_handler(void *arg) {
      * Format TCP header
      * Write on pipe to Presentation
      * */
-    packet_dump_line_t *buf;
+    packet_dump_line_t buf;
     ssize_t r;
+    tcp_hdr_t *tcp;
     puts("Initializing tcp_handler...");
     while (1) {
         // Read from IP
+        memset(&buf, 0, sizeof(buf));
         r = read(pipefd[IP_TCP][READ], &buf, sizeof(buf));
         if (r <= 0) {
 #if DEBUG >= 1
@@ -102,6 +126,11 @@ void *tcp_handler(void *arg) {
             break;
         }
         // Format
+        tcp = (tcp_hdr_t*)(buf.content + ETHERNET_HEADER_SIZE
+                           + buf.info.size_ip);
+        buf.info.size_transport = (uint32_t) TH_HSIZE(tcp);
+        buf.info.is_tcp = 1;
+        memcpy(&buf.info.tcp_header, tcp, buf.info.size_transport);
         // Write to Presentation
         r = write(pipefd[TCP_PRST][WRITE], &buf, sizeof(buf));
         if (r <= 0) {
@@ -120,11 +149,13 @@ void *udp_handler(void *arg) {
      * Format UDP header
      * Write on pipe to Presentation
      * */
-    packet_dump_line_t *buf;
+    packet_dump_line_t buf;
     ssize_t r;
+    udp_hdr_t *udp;
     puts("Initializing udp_handler...");
     while (1) {
         // Read from IP
+        memset(&buf, 0, sizeof(buf));
         r = read(pipefd[IP_UDP][READ], &buf, sizeof(buf));
         if (r <= 0) {
 #if DEBUG >= 1
@@ -133,6 +164,11 @@ void *udp_handler(void *arg) {
             break;
         }
         // Format
+        udp = (udp_hdr_t*)(buf.content + ETHERNET_HEADER_SIZE
+                           + buf.info.size_ip);
+        buf.info.size_transport = UDP_HEADER_SIZE;
+        buf.info.is_udp = 1;
+        memcpy(&buf.info.udp_header, udp, buf.info.size_transport);
         // Write to Presentation
         r = write(pipefd[UDP_PRST][WRITE], &buf, sizeof(buf));
         if (r <= 0) {
@@ -151,8 +187,9 @@ void* presentation_handler(void *arg) {
      * Send signal to Output
      * Write on pipe to Output
      * */
-    packet_dump_line_t *buf;
+    packet_dump_line_t buf;
     ssize_t r;
+    u_char *payload;
     fd_set active_fd_set, read_fd_set;
     FD_ZERO(&active_fd_set);
     FD_SET(pipefd[TCP_PRST][READ], &active_fd_set);
@@ -166,6 +203,7 @@ void* presentation_handler(void *arg) {
 #endif
             break;
         }
+        memset(&buf, 0, sizeof(buf));
         if (FD_ISSET(pipefd[TCP_PRST][READ], &read_fd_set)) { // Received TCP
             // Handle TCP packet
             r = read(pipefd[TCP_PRST][READ], &buf, sizeof(buf));
@@ -184,8 +222,16 @@ void* presentation_handler(void *arg) {
 #endif
                 break;
             }
+            payload = (u_char *) (buf.content + ETHERNET_HEADER_SIZE
+                                  + buf.info.size_ip + buf.info.size_transport);
+            buf.info.size_payload = ntohs(buf.info.ip_header.ip_len)
+                                    - (buf.info.size_ip + buf.info.size_transport);
+            buf.info.print_payload = 1;
+            memcpy(buf.info.payload, payload, buf.info.size_payload);
+            buf.info_is_completed = 1;
         } else { // Undefined behaviour
-
+            fprintf(stderr, "Undefined behaviour on select().\n");
+            return NULL;
         }
         // Write to Output
         r = write(pipefd[PRST_OUTPUT][WRITE], &buf, sizeof(buf));
@@ -205,12 +251,13 @@ void *screen_output_handler(void *arg) {
      * Output result in screen
      * Write to Filewriter or free memory
      * */
-    packet_dump_line_t *buf;
+    packet_dump_line_t buf;
     ssize_t r;
     pa_opt options = *((pa_opt*) arg);
     puts("Initializing screen_output_handler...");
     while (1) {
         // Read from Presentation
+        memset(&buf, 0, sizeof(buf));
         r = read(pipefd[PRST_OUTPUT][READ], &buf, sizeof(buf));
         if (r <= 0) {
 #if DEBUG >= 1
@@ -219,45 +266,11 @@ void *screen_output_handler(void *arg) {
             break;
         }
         // Format, output to screen
-
-        if (options.rw_mode_opt == WRITE) {
-            // Write packet to Filewriter
-            r = write(pipefd[OUTPUT_WRITER][WRITE], &buf, sizeof(buf));
-            if (r <= 0) {
-#if DEBUG >= 1
-                perror("screen_output_handler: write");
-#endif
-                break;
-            }
-        } else {
-            // Free allocated memory
-            //pkt_free(&buf);
-        }
+        pkt_print_packet(&buf);
     }
     puts("Closing screen_output_handler...");
     return NULL;
 }
-
-/*void *filewriter_handler(void *arg) {
-    /* Read from pipe (from Output)
-     * Write packet in file
-     * Free memory allocated by package
-     * */
-    /*packet_dump_line_t *buf;
-    ssize_t r;
-    while (1) {
-        r = read(pipefd[OUTPUT_WRITER][READ], &buf, sizeof(buf));
-        if (r <= 0) {
-#if DEBUG >= 1
-            perror("filewriter_handler: read");
-#endif
-            break;
-        }
-        // Write packet in file
-        //pkt_free(&buf); // Free memory
-    }
-    return NULL;
-}*/
 
 int start_pipes() {
     int i;

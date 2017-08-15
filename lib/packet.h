@@ -41,6 +41,8 @@ typedef struct {    /* Info packet */
         udp_hdr_t   udp_header;
     };
     u_char          payload[PAYLOAD_MAX_SIZE];
+    uint32_t        size_ip;
+    uint32_t        size_transport;
     uint32_t        size_payload;
     short int       is_ipv4, is_tcp, is_udp, print_payload; // Flags
 } packet_t;
