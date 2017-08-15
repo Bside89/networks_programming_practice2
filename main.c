@@ -125,8 +125,7 @@ int main(int argc, char *argv[]) {
     close_modules();
     int i;
     for (i = 0; i < THREADS_SIZE; i++)
-        if (i != 4) // TODO temporary; remove as soon as possible
-            pthread_join(threads[i], NULL);
+        pthread_join(threads[i], NULL);
     puts("Closing program...");
     printf("\n");
     return EXIT_SUCCESS;

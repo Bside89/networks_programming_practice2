@@ -4,6 +4,7 @@
 
 #include <libzvbi.h>
 #include <string.h>
+#include <sys/poll.h>
 #include "common.h"
 #include "modules.h"
 #include "packet.h"
@@ -209,26 +210,31 @@ void* presentation_handler(void *arg) {
      * Write on pipe to Output
      * */
     unsigned int packet_num = 1;
+    int pollrv;
     packet_dump_line_t buf;
     ssize_t r;
     u_char *payload;
-    fd_set active_fd_set, read_fd_set;
-    FD_ZERO(&active_fd_set);
-    FD_SET(pipefd[TCP_PRST][READ], &active_fd_set);
-    FD_SET(pipefd[UDP_PRST][READ], &active_fd_set);
+    struct pollfd fd[2];
+
+    fd[0].fd = pipefd[TCP_PRST][READ];
+    fd[0].events = POLLIN;
+    fd[1].fd = pipefd[UDP_PRST][READ];
+    fd[1].events = POLLIN;
 #if DEBUG >= 2
     puts("Initializing presentation_handler...");
 #endif
     while (!shutdown_flag) {
-        read_fd_set = active_fd_set;
-        if (select(FD_SETSIZE, &read_fd_set, NULL, NULL, NULL) < 0) {
+        pollrv = poll(fd, 2, 0);
+        if (pollrv == -1) { // Error on polling
 #if DEBUG >= 1
-            perror("presentation_handler: select");
+            perror("presentation_handler: poll");
 #endif
             break;
         }
+        if (pollrv == 0) // Data is not available yet
+            continue;
         memset(&buf, 0, sizeof(buf));
-        if (FD_ISSET(pipefd[TCP_PRST][READ], &read_fd_set)) { // Received TCP
+        if (fd[0].revents & POLLIN) { // Received TCP
             // Handle TCP packet
             r = read(pipefd[TCP_PRST][READ], &buf, sizeof(buf));
             if (r <= 0) {
@@ -237,7 +243,7 @@ void* presentation_handler(void *arg) {
 #endif
                 break;
             }
-        } else if (FD_ISSET(pipefd[UDP_PRST][READ], &read_fd_set)) { // Received UDP
+        } else if (fd[1].revents & POLLIN) { // Received UDP
             // Handle UDP packet
             r = read(pipefd[UDP_PRST][READ], &buf, sizeof(buf));
             if (r <= 0) {
@@ -246,9 +252,6 @@ void* presentation_handler(void *arg) {
 #endif
                 break;
             }
-        } else { // Undefined behaviour
-            fprintf(stderr, "Undefined behaviour on select().\n");
-            return NULL;
         }
         // Format
         payload = (u_char *) (buf.content + ETHERNET_HEADER_SIZE
@@ -258,7 +261,6 @@ void* presentation_handler(void *arg) {
         buf.info.print_payload = 1;
         memcpy(buf.info.payload, payload, buf.info.size_payload);
         buf.info.num = packet_num++;
-        //printf("PACKET NUM: %u\n", packet_num);
         buf.info_is_completed = 1;
         // Write to Output
         r = write(pipefd[PRST_OUTPUT][WRITE], &buf, sizeof(buf));
@@ -268,10 +270,10 @@ void* presentation_handler(void *arg) {
 #endif
             break;
         }
-    }
 #if DEBUG >= 2
-    puts("Closing presentation_handler...");
+        puts("Closing presentation_handler...");
 #endif
+    }
     return NULL;
 }
 
