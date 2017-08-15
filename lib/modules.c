@@ -16,9 +16,9 @@ short print_payload_flag;
 short shutdown_flag;
 
 void *ethernet_handler(void *arg) {
-    /* Read from pipe (from Main) -- CHECKED
+    /* Read from pipe (from Main)
      * Format ethernet header
-     * Write on pipe to IP -- CHECKED
+     * Write on pipe to IP
      * */
     packet_dump_line_t buf;
     ssize_t r;
@@ -206,6 +206,7 @@ void* presentation_handler(void *arg) {
      * Send signal to Output
      * Write on pipe to Output
      * */
+    unsigned int packet_num = 1;
     packet_dump_line_t buf;
     ssize_t r;
     u_char *payload;
@@ -243,17 +244,20 @@ void* presentation_handler(void *arg) {
 #endif
                 break;
             }
-            payload = (u_char *) (buf.content + ETHERNET_HEADER_SIZE
-                                  + buf.info.size_ip + buf.info.size_transport);
-            buf.info.size_payload = ntohs(buf.info.ip_header.ip_len)
-                                    - (buf.info.size_ip + buf.info.size_transport);
-            buf.info.print_payload = 1;
-            memcpy(buf.info.payload, payload, buf.info.size_payload);
-            buf.info_is_completed = 1;
         } else { // Undefined behaviour
             fprintf(stderr, "Undefined behaviour on select().\n");
             return NULL;
         }
+        // Format
+        payload = (u_char *) (buf.content + ETHERNET_HEADER_SIZE
+                              + buf.info.size_ip + buf.info.size_transport);
+        buf.info.size_payload = ntohs(buf.info.ip_header.ip_len)
+                                - (buf.info.size_ip + buf.info.size_transport);
+        buf.info.print_payload = 1;
+        memcpy(buf.info.payload, payload, buf.info.size_payload);
+        buf.info.num = packet_num++;
+        //printf("PACKET NUM: %u\n", packet_num);
+        buf.info_is_completed = 1;
         // Write to Output
         r = write(pipefd[PRST_OUTPUT][WRITE], &buf, sizeof(buf));
         if (r <= 0) {

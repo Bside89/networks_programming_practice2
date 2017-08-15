@@ -146,72 +146,18 @@ int main(int argc, char *argv[]) {
 
 void pcap_myhandler(u_char* dumpfile, const struct pcap_pkthdr* header,
                     const u_char* packet) {
-    static unsigned int count = 1, is_first_packet = 1;
+    static unsigned int is_first_packet = 1;
     static struct timeval elapsed_time = {0, 0};
     packet_dump_line_t d;
-    uint32_t size_ip, size_tu;
-    eth_hdr_t *eth;
-    ip_hdr_t *ip;
-    tcp_hdr_t *tcp;
-    udp_hdr_t *udp;
-    u_char *payload;
 
     memset(&d, 0, sizeof(d));
     memcpy(&d.line_header, header, sizeof(d.line_header));
     memcpy(&d.content, packet, BUFSIZ);
 
-    d.info.num = count++;/*
-    eth = (eth_hdr_t*)(d.content);
-    d.info.is_ipv4 = ntohs(eth->ether_type) == ETHERTYPE_IP;
-    memcpy(&d.info.eth_header, eth, ETHERNET_HEADER_SIZE);
-
-    // Define/compute IP header offset
-    ip = (ip_hdr_t*)(d.content + ETHERNET_HEADER_SIZE);
-    size_ip = IP_HSIZE(ip);
-    if (size_ip < IP_HEADER_MIN_SIZE) {
-        printf("Invalid IP header length: %u bytes.\n", size_ip);
-        return;
-    }
-    memcpy(&d.info.ip_header, ip, size_ip);
-
-    // Determine protocol
-    switch (ip->ip_p) {
-        case IPPROTO_TCP:
-            // Define/compute TCP header offset
-            tcp = (tcp_hdr_t*)(d.content + ETHERNET_HEADER_SIZE
-                                             + size_ip);
-            size_tu = (uint32_t) TH_HSIZE(tcp);
-            d.info.is_tcp = 1;
-            memcpy(&d.info.tcp_header, tcp, size_tu);
-            if (size_tu < TCP_HEADER_MIN_SIZE) {
-                printf("Invalid TCP header length: %u bytes.\n", size_tu);
-                return;
-            }
-            break;
-        case IPPROTO_UDP:
-            // Define/compute UDP header offset
-            udp = (udp_hdr_t*)(d.content + ETHERNET_HEADER_SIZE
-                                              + size_ip);
-            size_tu = UDP_HEADER_SIZE;
-            d.info.is_udp = 1;
-            memcpy(&d.info.udp_header, udp, size_tu);
-            break;
-        default:
-            // IPPROTO_ICMP or IPPROTO_IP etc.
-            return;
-    }
-    if (opts.print_payload_opt) {
-        payload = (u_char *) (d.content + ETHERNET_HEADER_SIZE
-                                     + size_ip + size_tu);
-        d.info.size_payload = ntohs(ip->ip_len) - (size_ip + size_tu);
-        d.info.print_payload = 1;
-        memcpy(d.info.payload, payload, d.info.size_payload);
-    }*/
     if (is_first_packet) {
         is_first_packet = 0;
     } else {
-        pkt_timeval_wrapper(d.line_header.ts,
-                            elapsed_time, &d.timedelta);
+        pkt_timeval_wrapper(d.line_header.ts, elapsed_time, &d.timedelta);
     }
     elapsed_time = d.line_header.ts;
     if (opts.rw_mode_opt == WRITE) {
@@ -219,7 +165,6 @@ void pcap_myhandler(u_char* dumpfile, const struct pcap_pkthdr* header,
     } else if (opts.print_irt) {
         nanosleep(&d.timedelta, NULL);
     }
-    // TODO from here, write packet 'd' to MAIN_ETH pipe
     write(pipefd[MAIN_ETH][WRITE], &d, sizeof(d));
 }
 
