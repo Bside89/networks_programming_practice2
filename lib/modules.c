@@ -168,8 +168,22 @@ void* presentation_handler(void *arg) {
         }
         if (FD_ISSET(pipefd[TCP_PRST][READ], &read_fd_set)) { // Received TCP
             // Handle TCP packet
+            r = read(pipefd[TCP_PRST][READ], &buf, sizeof(buf));
+            if (r <= 0) {
+#if DEBUG >= 1
+                perror("presentation_handler: write (TCP)");
+#endif
+                break;
+            }
         } else if (FD_ISSET(pipefd[UDP_PRST][READ], &read_fd_set)) { // Received UDP
             // Handle UDP packet
+            r = read(pipefd[UDP_PRST][READ], &buf, sizeof(buf));
+            if (r <= 0) {
+#if DEBUG >= 1
+                perror("presentation_handler: write (UDP)");
+#endif
+                break;
+            }
         } else { // Undefined behaviour
 
         }
