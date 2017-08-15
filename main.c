@@ -102,7 +102,8 @@ int main(int argc, char *argv[]) {
         }
     }
     // Debug
-    if (opts.debug_opt) pcap_debug();
+    // DISABLED due to memory leak on pcap_freealldevs()
+    //if (opts.debug_opt) pcap_debug();
 
     // Main loop
     pcap_loop(pcaphandle, npackets, pcap_myhandler, (unsigned char*) dumpfile);
@@ -187,18 +188,17 @@ void pcap_myhandler(u_char* dumpfile, const struct pcap_pkthdr* header,
     if (is_first_packet) {
         is_first_packet = 0;
     } else {
-        timersub(&d.line_header.ts, &elapsedtime, &timedelta);
+        pkt_timeval_wrapper(d.line_header.ts,
+                            elapsedtime, &d.timedelta);
+        //timersub(&d.line_header.ts, &elapsedtime, &timedelta);
     }
     elapsedtime = d.line_header.ts;
-    printf("Timedelta: %ld.%06ld.\n", timedelta.tv_sec, timedelta.tv_usec);
     if (opts.rw_mode_opt == WRITE) {
         pcap_dump(dumpfile, header, packet);
     } else {
-        nanodeltatime.tv_sec = timedelta.tv_sec;
-        nanodeltatime.tv_nsec = timedelta.tv_usec*1000;
-        nanosleep(&nanodeltatime, NULL);
+        nanosleep(&d.timedelta, NULL);
     }
-    pkt_print_packet(&d.info, d.line_header.len);
+    pkt_print_packet(&d);
 }
 
 void sigint_handler(int signum) {

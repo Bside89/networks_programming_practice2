@@ -25,6 +25,6 @@ typedef struct {
     short int   debug_opt;
 } pa_opt;
 
-int paopt_set(int argc, char **argv, pa_opt *ns);
+int paopt_set(int, char **, pa_opt *);
 
 #endif //TP1_TP1OPT_H

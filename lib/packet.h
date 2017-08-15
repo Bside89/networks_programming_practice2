@@ -13,6 +13,7 @@
 #include <netinet/udp.h>
 #include <stdio.h>
 #include <pcap.h>
+#include <time.h>
 #include "common.h"
 
 #define ETHERNET_HEADER_SIZE    14  // Ethernet headers are always exactly 14 bytes
@@ -53,28 +54,18 @@ typedef struct {
 /* Complete packet */
 typedef struct {
     packet_t            info;               // Processed info
-    short int           info_is_completed;  // Flag
     struct pcap_pkthdr  line_header;        // Packet pcap header
+    struct timespec     timedelta;          // Time diff with the previous packet
+    short int           info_is_completed;  // Flag
     u_char              content[BUFSIZ];    // Packet content
 } packet_dump_line_t;
 
-void pkt_init(packet_dump_line_t **p);
-
-void pkt_bind(packet_dump_line_t *p, const struct pcap_pkthdr *header,
-              const u_char *content);
-
-void pkt_free(packet_dump_line_t **p);
-
-void pkt_print_packet(packet_t *packet, int pck_size);
-
-void pkt_print_ethernet_header(const eth_hdr_t *eth);
-
-void pkt_print_ip_header(const ip_hdr_t *ip);
-
-void pkt_print_tcp_header(const tcp_hdr_t *tcp);
-
-void pkt_print_udp_header(const udp_hdr_t *udp);
-
-void pkt_print_payload(const u_char *payload, const int size_payload);
+void pkt_timeval_wrapper(struct timeval, struct timeval, struct timespec *);
+void pkt_print_packet(packet_dump_line_t *);
+void pkt_print_ethernet_header(const eth_hdr_t *);
+void pkt_print_ip_header(const ip_hdr_t *);
+void pkt_print_tcp_header(const tcp_hdr_t *);
+void pkt_print_udp_header(const udp_hdr_t *);
+void pkt_print_payload(const u_char *, const int);
 
 #endif //TP2_TP2UTILS_H

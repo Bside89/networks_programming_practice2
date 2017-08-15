@@ -206,7 +206,7 @@ void *screen_output_handler(void *arg) {
             }
         } else {
             // Free allocated memory
-            pkt_free(&buf);
+            //pkt_free(&buf);
         }
     }
     return NULL;
@@ -228,7 +228,7 @@ void *filewriter_handler(void *arg) {
             break;
         }
         // Write packet in file
-        pkt_free(&buf); // Free memory
+        //pkt_free(&buf); // Free memory
     }
     return NULL;
 }
