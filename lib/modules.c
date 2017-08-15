@@ -18,6 +18,7 @@ void *ethernet_handler(void *arg) {
      * */
     packet_dump_line_t *buf;
     ssize_t r;
+    puts("Initializing ethernet_handler...");
     while (1) {
         // Read from Main
         r = read(pipefd[MAIN_ETH][READ], &buf, sizeof(buf));
@@ -37,6 +38,7 @@ void *ethernet_handler(void *arg) {
             break;
         }
     }
+    puts("Closing ethernet_handler...");
     return NULL;
 }
 
@@ -47,6 +49,7 @@ void *ip_handler(void *arg) {
      * */
     packet_dump_line_t *buf;
     ssize_t r;
+    puts("Initializing ip_handler...");
     while (1) {
         // Read from Ethernet
         r = read(pipefd[ETH_IP][READ], &buf, sizeof(buf));
@@ -77,6 +80,7 @@ void *ip_handler(void *arg) {
             }
         }
     }
+    puts("Closing ip_handler...");
     return NULL;
 }
 
@@ -87,6 +91,7 @@ void *tcp_handler(void *arg) {
      * */
     packet_dump_line_t *buf;
     ssize_t r;
+    puts("Initializing tcp_handler...");
     while (1) {
         // Read from IP
         r = read(pipefd[IP_TCP][READ], &buf, sizeof(buf));
@@ -106,6 +111,7 @@ void *tcp_handler(void *arg) {
             break;
         }
     }
+    puts("Closing tcp_handler...");
     return NULL;
 }
 
@@ -116,6 +122,7 @@ void *udp_handler(void *arg) {
      * */
     packet_dump_line_t *buf;
     ssize_t r;
+    puts("Initializing udp_handler...");
     while (1) {
         // Read from IP
         r = read(pipefd[IP_UDP][READ], &buf, sizeof(buf));
@@ -135,6 +142,7 @@ void *udp_handler(void *arg) {
             break;
         }
     }
+    puts("Closing udp_handler...");
     return NULL;
 }
 
@@ -149,6 +157,7 @@ void* presentation_handler(void *arg) {
     FD_ZERO(&active_fd_set);
     FD_SET(pipefd[TCP_PRST][READ], &active_fd_set);
     FD_SET(pipefd[UDP_PRST][READ], &active_fd_set);
+    puts("Initializing presentation_handler...");
     while (1) {
         read_fd_set = active_fd_set;
         if (select(FD_SETSIZE, &read_fd_set, NULL, NULL, NULL) < 0) {
@@ -173,6 +182,7 @@ void* presentation_handler(void *arg) {
             break;
         }
     }
+    puts("Closing presentation_handler...");
     return NULL;
 }
 
@@ -184,6 +194,7 @@ void *screen_output_handler(void *arg) {
     packet_dump_line_t *buf;
     ssize_t r;
     pa_opt options = *((pa_opt*) arg);
+    puts("Initializing screen_output_handler...");
     while (1) {
         // Read from Presentation
         r = read(pipefd[PRST_OUTPUT][READ], &buf, sizeof(buf));
@@ -209,15 +220,16 @@ void *screen_output_handler(void *arg) {
             //pkt_free(&buf);
         }
     }
+    puts("Closing screen_output_handler...");
     return NULL;
 }
 
-void *filewriter_handler(void *arg) {
+/*void *filewriter_handler(void *arg) {
     /* Read from pipe (from Output)
      * Write packet in file
      * Free memory allocated by package
      * */
-    packet_dump_line_t *buf;
+    /*packet_dump_line_t *buf;
     ssize_t r;
     while (1) {
         r = read(pipefd[OUTPUT_WRITER][READ], &buf, sizeof(buf));
@@ -231,7 +243,7 @@ void *filewriter_handler(void *arg) {
         //pkt_free(&buf); // Free memory
     }
     return NULL;
-}
+}*/
 
 int start_pipes() {
     int i;
@@ -244,4 +256,11 @@ int start_pipes() {
         }
     }
     return 0;
+}
+
+void close_modules() {
+    int i;
+    for (i = 0; i < PIPES_QTT; i++) {
+        write(pipefd[i][WRITE], '\0', 0);
+    }
 }

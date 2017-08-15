@@ -139,14 +139,14 @@ void pkt_print_packet(packet_dump_line_t *packet) {
     printf("Timedelta:\t%ld.%09ld seconds\n",
            packet->timedelta.tv_sec, packet->timedelta.tv_nsec);
     puts(MINOR_DIV_LINE);
-    pkt_print_ethernet_header(packet->info.eth_header);
+    pkt_print_ethernet_header(&packet->info.eth_header);
     puts(MINOR_DIV_LINE);
-    pkt_print_ip_header(packet->info.ip_header);
+    pkt_print_ip_header(&packet->info.ip_header);
     puts(MINOR_DIV_LINE);
     if (packet->info.is_tcp)
-        pkt_print_tcp_header(packet->info.tcp_header);
+        pkt_print_tcp_header(&packet->info.tcp_header);
     else if (packet->info.is_udp)
-        pkt_print_udp_header(packet->info.udp_header);
+        pkt_print_udp_header(&packet->info.udp_header);
     if (packet->info.print_payload) {
         puts(MINOR_DIV_LINE);
         pkt_print_payload(packet->info.payload, packet->info.size_payload);

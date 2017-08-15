@@ -6,8 +6,7 @@
 #include <signal.h>
 #include <string.h>
 #include <time.h>
-
-#define THREADS_SIZE 6
+#include <pthread.h>
 
 // Flag that indicate if it is time to shutdown (switched by signal handler)
 //volatile int is_exit = 0;
@@ -104,6 +103,14 @@ int main(int argc, char *argv[]) {
     // DISABLED due to memory leak on pcap_freealldevs()
     //if (opts.debug_opt) pcap_debug();
 
+    // Initialize threads
+    pthread_create(&threads[0], NULL, ethernet_handler, NULL);
+    pthread_create(&threads[1], NULL, ip_handler, NULL);
+    pthread_create(&threads[2], NULL, tcp_handler, NULL);
+    pthread_create(&threads[3], NULL, udp_handler, NULL);
+    pthread_create(&threads[4], NULL, presentation_handler, NULL);
+    pthread_create(&threads[5], NULL, screen_output_handler, (void*) &opts);
+
     // Main loop
     pcap_loop(pcaphandle, npackets, pcap_myhandler, (unsigned char*) dumpfile);
     printf("\n\n");
@@ -115,7 +122,11 @@ int main(int argc, char *argv[]) {
         pcap_dump_close(dumpfile);
         printf("Saved file as %s.\n", opts.file_path);
     }
-    puts("Closing program.");
+    puts("Closing threads...");
+    int i;
+    for (i = 0; i < THREADS_SIZE; i++)
+        pthread_cancel(threads[i]); // TODO temporary; remove as soon as possible
+    puts("Closing program...");
     printf("\n");
     return EXIT_SUCCESS;
 }
@@ -123,8 +134,7 @@ int main(int argc, char *argv[]) {
 void pcap_myhandler(u_char* dumpfile, const struct pcap_pkthdr* header,
                     const u_char* packet) {
     static unsigned int count = 1, is_first_packet = 1;
-    static struct timeval timedelta = {0, 0}, elapsedtime = {0, 0};
-    struct timespec nanodeltatime;
+    static struct timeval elapsed_time = {0, 0};
     packet_dump_line_t d;
     uint32_t size_ip, size_tu;
     eth_hdr_t *eth;
@@ -140,7 +150,7 @@ void pcap_myhandler(u_char* dumpfile, const struct pcap_pkthdr* header,
     d.info.num = count++;
     eth = (eth_hdr_t*)(d.content);
     d.info.is_ipv4 = ntohs(eth->ether_type) == ETHERTYPE_IP;
-    d.info.eth_header = eth;
+    memcpy(&d.info.eth_header, eth, ETHERNET_HEADER_SIZE);
 
     // Define/compute IP header offset
     ip = (ip_hdr_t*)(d.content + ETHERNET_HEADER_SIZE);
@@ -149,7 +159,7 @@ void pcap_myhandler(u_char* dumpfile, const struct pcap_pkthdr* header,
         printf("Invalid IP header length: %u bytes.\n", size_ip);
         return;
     }
-    d.info.ip_header = ip;
+    memcpy(&d.info.ip_header, ip, size_ip);
 
     // Determine protocol
     switch (ip->ip_p) {
@@ -159,7 +169,7 @@ void pcap_myhandler(u_char* dumpfile, const struct pcap_pkthdr* header,
                                              + size_ip);
             size_tu = (uint32_t) TH_HSIZE(tcp);
             d.info.is_tcp = 1;
-            d.info.tcp_header = tcp;
+            memcpy(&d.info.tcp_header, tcp, size_tu);
             if (size_tu < TCP_HEADER_MIN_SIZE) {
                 printf("Invalid TCP header length: %u bytes.\n", size_tu);
                 return;
@@ -171,7 +181,7 @@ void pcap_myhandler(u_char* dumpfile, const struct pcap_pkthdr* header,
                                               + size_ip);
             size_tu = UDP_HEADER_SIZE;
             d.info.is_udp = 1;
-            d.info.udp_header = udp;
+            memcpy(&d.info.udp_header, udp, size_tu);
             break;
         default:
             // IPPROTO_ICMP or IPPROTO_IP etc.
@@ -182,16 +192,15 @@ void pcap_myhandler(u_char* dumpfile, const struct pcap_pkthdr* header,
                                      + size_ip + size_tu);
         d.info.size_payload = ntohs(ip->ip_len) - (size_ip + size_tu);
         d.info.print_payload = 1;
-        d.info.payload = payload;
+        memcpy(d.info.payload, payload, d.info.size_payload);
     }
     if (is_first_packet) {
         is_first_packet = 0;
     } else {
         pkt_timeval_wrapper(d.line_header.ts,
-                            elapsedtime, &d.timedelta);
-        //timersub(&d.line_header.ts, &elapsedtime, &timedelta);
+                            elapsed_time, &d.timedelta);
     }
-    elapsedtime = d.line_header.ts;
+    elapsed_time = d.line_header.ts;
     if (opts.rw_mode_opt == WRITE) {
         pcap_dump(dumpfile, header, packet);
     } else {

@@ -20,6 +20,9 @@
 #define IP_HEADER_MIN_SIZE      20  // IP headers are at least 20 bytes
 #define TCP_HEADER_MIN_SIZE     20  // TCP headers are at least 20 bytes
 #define UDP_HEADER_SIZE         8   // UDP headers are always exactly 8 bytes
+#define PAYLOAD_MAX_SIZE        BUFSIZ  - ETHERNET_HEADER_SIZE \
+                                        - IP_HEADER_MIN_SIZE \
+                                        - UDP_HEADER_SIZE
 
 typedef struct ether_header eth_hdr_t;  // Ethernet header
 typedef struct ip           ip_hdr_t;   // IP header
@@ -31,13 +34,13 @@ typedef struct udphdr       udp_hdr_t;  // UDP header
 
 typedef struct {    /* Info packet */
     uint32_t        num;
-    eth_hdr_t       *eth_header;
-    ip_hdr_t        *ip_header;
+    eth_hdr_t       eth_header;
+    ip_hdr_t        ip_header;
     union {
-        tcp_hdr_t   *tcp_header;
-        udp_hdr_t   *udp_header;
+        tcp_hdr_t   tcp_header;
+        udp_hdr_t   udp_header;
     };
-    u_char          *payload;
+    u_char          payload[PAYLOAD_MAX_SIZE];
     uint32_t        size_payload;
     short int       is_ipv4, is_tcp, is_udp, print_payload; // Flags
 } packet_t;
