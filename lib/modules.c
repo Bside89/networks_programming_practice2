@@ -3,6 +3,8 @@
 //
 
 #include <libzvbi.h>
+#include <string.h>
+#include <sys/poll.h>
 #include "common.h"
 #include "modules.h"
 #include "packet.h"
@@ -11,15 +13,23 @@
 
 int pipefd[PIPES_QTT][2];
 
+short print_payload_flag;
+short shutdown_flag;
+
 void *ethernet_handler(void *arg) {
-    /* Read from pipe (from Main) -- CHECKED
+    /* Read from pipe (from Main)
      * Format ethernet header
-     * Write on pipe to IP -- CHECKED
+     * Write on pipe to IP
      * */
-    packet_dump_line_t *buf;
+    packet_dump_line_t buf;
     ssize_t r;
-    while (1) {
+    eth_hdr_t *eth;
+#if DEBUG >= 2
+    puts("Initializing ethernet_handler...");
+#endif
+    while (!shutdown_flag) {
         // Read from Main
+        memset(&buf, 0, sizeof(buf));
         r = read(pipefd[MAIN_ETH][READ], &buf, sizeof(buf));
         if (r <= 0) {
 #if DEBUG >= 1
@@ -28,6 +38,9 @@ void *ethernet_handler(void *arg) {
             break;
         }
         // Format
+        eth = (eth_hdr_t*)(buf.content);
+        buf.info.is_ipv4 = ntohs(eth->ether_type) == ETHERTYPE_IP;
+        memcpy(&buf.info.eth_header, eth, ETHERNET_HEADER_SIZE);
         // Write to IP
         r = write(pipefd[ETH_IP][WRITE], &buf, sizeof(buf));
         if (r <= 0) {
@@ -37,6 +50,9 @@ void *ethernet_handler(void *arg) {
             break;
         }
     }
+#if DEBUG >= 2
+    puts("Closing ethernet_handler...");
+#endif
     return NULL;
 }
 
@@ -45,10 +61,15 @@ void *ip_handler(void *arg) {
      * Format IP header
      * Write on pipe to TCP or UDP
      * */
-    packet_dump_line_t *buf;
+    packet_dump_line_t buf;
     ssize_t r;
-    while (1) {
+    ip_hdr_t *ip;
+#if DEBUG >= 2
+    puts("Initializing ip_handler...");
+#endif
+    while (!shutdown_flag) {
         // Read from Ethernet
+        memset(&buf, 0, sizeof(buf));
         r = read(pipefd[ETH_IP][READ], &buf, sizeof(buf));
         if (r <= 0) {
 #if DEBUG >= 1
@@ -57,26 +78,45 @@ void *ip_handler(void *arg) {
             break;
         }
         // Format
-        if (r == 1) {           // TODO edit temp conditional r == 1
-            // Write to TCP
-            r = write(pipefd[IP_TCP][WRITE], &buf, sizeof(buf));
-            if (r <= 0) {
+        ip = (ip_hdr_t*)(buf.content + ETHERNET_HEADER_SIZE);
+        buf.info.size_ip = IP_HSIZE(ip);
+        if (buf.info.size_ip < IP_HEADER_MIN_SIZE) {
 #if DEBUG >= 1
-                perror("ip_handler: write (TCP)");
+            printf("Invalid IP header length: %u bytes.\n", buf.info.size_ip);
 #endif
-                break;
-            }
-        } else if (r == 2) {    // TODO edit temp conditional r == 2
-            // Write to UDP
-            r = write(pipefd[IP_UDP][WRITE], &buf, sizeof(buf));
-            if (r <= 0) {
+            continue;
+        }
+        buf.info.is_ipv4 = 1;
+        memcpy(&buf.info.ip_header, ip, buf.info.size_ip);
+        switch (ip->ip_p) {
+            case IPPROTO_TCP:
+                // Write to TCP
+                r = write(pipefd[IP_TCP][WRITE], &buf, sizeof(buf));
+                if (r <= 0) {
 #if DEBUG >= 1
-                perror("ip_handler: write (UDP)");
+                    perror("ip_handler: write (TCP)");
 #endif
+                    break;
+                }
                 break;
-            }
+            case IPPROTO_UDP:
+                // Write to UDP
+                r = write(pipefd[IP_UDP][WRITE], &buf, sizeof(buf));
+                if (r <= 0) {
+#if DEBUG >= 1
+                    perror("ip_handler: write (UDP)");
+#endif
+                    break;
+                }
+                break;
+            default:
+                // IPPROTO_ICMP or IPPROTO_IP etc.
+                break;
         }
     }
+#if DEBUG >= 2
+    puts("Closing ip_handler...");
+#endif
     return NULL;
 }
 
@@ -85,10 +125,15 @@ void *tcp_handler(void *arg) {
      * Format TCP header
      * Write on pipe to Presentation
      * */
-    packet_dump_line_t *buf;
+    packet_dump_line_t buf;
     ssize_t r;
-    while (1) {
+    tcp_hdr_t *tcp;
+#if DEBUG >= 2
+    puts("Initializing tcp_handler...");
+#endif
+    while (!shutdown_flag) {
         // Read from IP
+        memset(&buf, 0, sizeof(buf));
         r = read(pipefd[IP_TCP][READ], &buf, sizeof(buf));
         if (r <= 0) {
 #if DEBUG >= 1
@@ -97,6 +142,11 @@ void *tcp_handler(void *arg) {
             break;
         }
         // Format
+        tcp = (tcp_hdr_t*)(buf.content + ETHERNET_HEADER_SIZE
+                           + buf.info.size_ip);
+        buf.info.size_transport = (uint32_t) TH_HSIZE(tcp);
+        buf.info.is_tcp = 1;
+        memcpy(&buf.info.tcp_header, tcp, buf.info.size_transport);
         // Write to Presentation
         r = write(pipefd[TCP_PRST][WRITE], &buf, sizeof(buf));
         if (r <= 0) {
@@ -106,6 +156,9 @@ void *tcp_handler(void *arg) {
             break;
         }
     }
+#if DEBUG >= 2
+    puts("Closing tcp_handler...");
+#endif
     return NULL;
 }
 
@@ -114,10 +167,15 @@ void *udp_handler(void *arg) {
      * Format UDP header
      * Write on pipe to Presentation
      * */
-    packet_dump_line_t *buf;
+    packet_dump_line_t buf;
     ssize_t r;
-    while (1) {
+    udp_hdr_t *udp;
+#if DEBUG >= 2
+    puts("Initializing udp_handler...");
+#endif
+    while (!shutdown_flag) {
         // Read from IP
+        memset(&buf, 0, sizeof(buf));
         r = read(pipefd[IP_UDP][READ], &buf, sizeof(buf));
         if (r <= 0) {
 #if DEBUG >= 1
@@ -126,6 +184,11 @@ void *udp_handler(void *arg) {
             break;
         }
         // Format
+        udp = (udp_hdr_t*)(buf.content + ETHERNET_HEADER_SIZE
+                           + buf.info.size_ip);
+        buf.info.size_transport = UDP_HEADER_SIZE;
+        buf.info.is_udp = 1;
+        memcpy(&buf.info.udp_header, udp, buf.info.size_transport);
         // Write to Presentation
         r = write(pipefd[UDP_PRST][WRITE], &buf, sizeof(buf));
         if (r <= 0) {
@@ -135,6 +198,9 @@ void *udp_handler(void *arg) {
             break;
         }
     }
+#if DEBUG >= 2
+    puts("Closing udp_handler...");
+#endif
     return NULL;
 }
 
@@ -143,27 +209,59 @@ void* presentation_handler(void *arg) {
      * Send signal to Output
      * Write on pipe to Output
      * */
-    packet_dump_line_t *buf;
+    unsigned int packet_num = 1;
+    int pollrv;
+    packet_dump_line_t buf;
     ssize_t r;
-    fd_set active_fd_set, read_fd_set;
-    FD_ZERO(&active_fd_set);
-    FD_SET(pipefd[TCP_PRST][READ], &active_fd_set);
-    FD_SET(pipefd[UDP_PRST][READ], &active_fd_set);
-    while (1) {
-        read_fd_set = active_fd_set;
-        if (select(FD_SETSIZE, &read_fd_set, NULL, NULL, NULL) < 0) {
+    u_char *payload;
+    struct pollfd fd[2];
+
+    fd[0].fd = pipefd[TCP_PRST][READ];
+    fd[0].events = POLLIN;
+    fd[1].fd = pipefd[UDP_PRST][READ];
+    fd[1].events = POLLIN;
+#if DEBUG >= 2
+    puts("Initializing presentation_handler...");
+#endif
+    while (!shutdown_flag) {
+        pollrv = poll(fd, 2, 0);
+        if (pollrv == -1) { // Error on polling
 #if DEBUG >= 1
-            perror("presentation_handler: select");
+            perror("presentation_handler: poll");
 #endif
             break;
         }
-        if (FD_ISSET(pipefd[TCP_PRST][READ], &read_fd_set)) { // Received TCP
+        if (pollrv == 0) // Data is not available yet
+            continue;
+        memset(&buf, 0, sizeof(buf));
+        if (fd[0].revents & POLLIN) { // Received TCP
             // Handle TCP packet
-        } else if (FD_ISSET(pipefd[UDP_PRST][READ], &read_fd_set)) { // Received UDP
+            r = read(pipefd[TCP_PRST][READ], &buf, sizeof(buf));
+            if (r <= 0) {
+#if DEBUG >= 1
+                perror("presentation_handler: write (TCP)");
+#endif
+                break;
+            }
+        } else if (fd[1].revents & POLLIN) { // Received UDP
             // Handle UDP packet
-        } else { // Undefined behaviour
-
+            r = read(pipefd[UDP_PRST][READ], &buf, sizeof(buf));
+            if (r <= 0) {
+#if DEBUG >= 1
+                perror("presentation_handler: write (UDP)");
+#endif
+                break;
+            }
         }
+        // Format
+        payload = (u_char *) (buf.content + ETHERNET_HEADER_SIZE
+                              + buf.info.size_ip + buf.info.size_transport);
+        buf.info.size_payload = ntohs(buf.info.ip_header.ip_len)
+                                - (buf.info.size_ip + buf.info.size_transport);
+        buf.info.print_payload = 1;
+        memcpy(buf.info.payload, payload, buf.info.size_payload);
+        buf.info.num = packet_num++;
+        buf.info_is_completed = 1;
         // Write to Output
         r = write(pipefd[PRST_OUTPUT][WRITE], &buf, sizeof(buf));
         if (r <= 0) {
@@ -172,6 +270,9 @@ void* presentation_handler(void *arg) {
 #endif
             break;
         }
+#if DEBUG >= 2
+        puts("Closing presentation_handler...");
+#endif
     }
     return NULL;
 }
@@ -181,11 +282,15 @@ void *screen_output_handler(void *arg) {
      * Output result in screen
      * Write to Filewriter or free memory
      * */
-    packet_dump_line_t *buf;
+    packet_dump_line_t buf;
     ssize_t r;
     pa_opt options = *((pa_opt*) arg);
-    while (1) {
+#if DEBUG >= 2
+    puts("Initializing screen_output_handler...");
+#endif
+    while (!shutdown_flag) {
         // Read from Presentation
+        memset(&buf, 0, sizeof(buf));
         r = read(pipefd[PRST_OUTPUT][READ], &buf, sizeof(buf));
         if (r <= 0) {
 #if DEBUG >= 1
@@ -194,42 +299,12 @@ void *screen_output_handler(void *arg) {
             break;
         }
         // Format, output to screen
-
-        if (options.rw_mode_opt == WRITE) {
-            // Write packet to Filewriter
-            r = write(pipefd[OUTPUT_WRITER][WRITE], &buf, sizeof(buf));
-            if (r <= 0) {
-#if DEBUG >= 1
-                perror("screen_output_handler: write");
-#endif
-                break;
-            }
-        } else {
-            // Free allocated memory
-            pkt_free(&buf);
-        }
+        buf.info.print_payload = print_payload_flag;
+        pkt_print_packet(&buf);
     }
-    return NULL;
-}
-
-void *filewriter_handler(void *arg) {
-    /* Read from pipe (from Output)
-     * Write packet in file
-     * Free memory allocated by package
-     * */
-    packet_dump_line_t *buf;
-    ssize_t r;
-    while (1) {
-        r = read(pipefd[OUTPUT_WRITER][READ], &buf, sizeof(buf));
-        if (r <= 0) {
-#if DEBUG >= 1
-            perror("filewriter_handler: read");
+#if DEBUG >= 2
+    puts("Closing screen_output_handler...");
 #endif
-            break;
-        }
-        // Write packet in file
-        pkt_free(&buf); // Free memory
-    }
     return NULL;
 }
 
@@ -244,4 +319,20 @@ int start_pipes() {
         }
     }
     return 0;
+}
+
+void close_modules() {
+    ssize_t r;
+    int i;
+    for (i = 0; i < PIPES_QTT; i++) {
+        r = write(pipefd[i][WRITE], '\0', 0);
+#if DEBUG >= 2
+        if (r <= 0)
+            printf("Can't send shutdown byte to thread #%d\n", i);
+#endif
+    }
+    for (i = 0; i < PIPES_QTT; i++) {
+        close(pipefd[i][READ]);
+        close(pipefd[i][WRITE]);
+    }
 }

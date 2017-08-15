@@ -10,27 +10,12 @@
 
 #define CHECK_FLAG(flag, position) (flag & (1 << position))
 
-void pkt_init(packet_dump_line_t **p) {
-    if (p == NULL)
-        exit(1);
-    *p = calloc(1, sizeof(packet_dump_line_t));
-    if (*p == NULL)
-        exit(1);
-}
-
-void pkt_bind(packet_dump_line_t *p, const struct pcap_pkthdr *header,
-              const u_char *content) {
-    if (p == NULL)
-        return;
-    memcpy(&p->line_header, header, sizeof(struct pcap_pkthdr));
-    memcpy(&p->content, content, header->len);
-}
-
-void pkt_free(packet_dump_line_t **p) {
-    if (p == NULL || *p == NULL)
-        return;
-    free(*p);
-    *p = NULL;
+void pkt_timeval_wrapper(struct timeval packet_tv, struct timeval prev_packet_tv,
+                         struct timespec *packet_tv_wrapped) {
+    struct timeval timedelta;
+    timersub(&packet_tv, &prev_packet_tv, &timedelta);
+    packet_tv_wrapped->tv_sec = timedelta.tv_sec;
+    packet_tv_wrapped->tv_nsec = timedelta.tv_usec*1000;
 }
 
 void pkt_print_ethernet_header(const eth_hdr_t *eth) {
@@ -145,24 +130,26 @@ void pkt_print_payload(const u_char *payload, const int size_payload) {
     }
 }
 
-void pkt_print_packet(packet_t *packet, int pck_size) {
-    if (!packet->is_ipv4 || (!packet->is_tcp && !packet->is_udp))
+void pkt_print_packet(packet_dump_line_t *packet) {
+    if (!packet->info.is_ipv4 || (!packet->info.is_tcp && !packet->info.is_udp))
         return;
     puts(MINOR_DIV_LINE);
-    printf("Packet number:\t<%d>\n", packet->num);
-    printf("Packet length:\t%d bytes.\n", pck_size);
+    printf("Packet number:\t<%d>\n", packet->info.num);
+    printf("Packet length:\t%d bytes\n", packet->line_header.len);
+    printf("Timedelta:\t%ld.%09ld seconds\n",
+           packet->timedelta.tv_sec, packet->timedelta.tv_nsec);
     puts(MINOR_DIV_LINE);
-    pkt_print_ethernet_header(packet->eth_header);
+    pkt_print_ethernet_header(&packet->info.eth_header);
     puts(MINOR_DIV_LINE);
-    pkt_print_ip_header(packet->ip_header);
+    pkt_print_ip_header(&packet->info.ip_header);
     puts(MINOR_DIV_LINE);
-    if (packet->is_tcp)
-        pkt_print_tcp_header(packet->tcp_header);
-    else if (packet->is_udp)
-        pkt_print_udp_header(packet->udp_header);
-    if (packet->print_payload) {
+    if (packet->info.is_tcp)
+        pkt_print_tcp_header(&packet->info.tcp_header);
+    else if (packet->info.is_udp)
+        pkt_print_udp_header(&packet->info.udp_header);
+    if (packet->info.print_payload) {
         puts(MINOR_DIV_LINE);
-        pkt_print_payload(packet->payload, packet->size_payload);
+        pkt_print_payload(packet->info.payload, packet->info.size_payload);
     }
     puts(MINOR_DIV_LINE);
     puts(DIV_LINE);
