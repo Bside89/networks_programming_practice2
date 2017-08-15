@@ -9,7 +9,6 @@
 
 #define THREADS_SIZE 6
 
-
 // Flag that indicate if it is time to shutdown (switched by signal handler)
 //volatile int is_exit = 0;
 
@@ -31,7 +30,6 @@ void pcap_debug(void);
 int main(int argc, char *argv[]) {
     pthread_t threads[THREADS_SIZE];
     char errbuf[PCAP_ERRBUF_SIZE];
-    char filter[] = "ip and (tcp or udp)";
     bpf_u_int32 mask;
     bpf_u_int32 net;
     struct bpf_program fp;
@@ -70,7 +68,7 @@ int main(int argc, char *argv[]) {
     if (opts.rw_mode_opt == WRITE)
         pcaphandle = pcap_open_live(opts.interface_name, BUFSIZ, 1, 1000, errbuf);
     else
-        pcaphandle = pcap_open_offline(opts.filepath, errbuf);
+        pcaphandle = pcap_open_offline(opts.file_path, errbuf);
     if (pcaphandle == NULL) {
         fprintf(stderr, "Couldn't open device %s: %s\n",
                 opts.interface_name, errbuf);
@@ -83,19 +81,20 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
     // Compile filter
-    if (pcap_compile(pcaphandle, &fp, filter, 0, net) == -1) {
+    // TODO concat <args> defined by user as parameter to filter
+    if (pcap_compile(pcaphandle, &fp, opts.filter, 0, net) == -1) {
         fprintf(stderr, "Couldn't parse filter %s: %s\n",
-                filter, pcap_geterr(pcaphandle));
+                opts.filter, pcap_geterr(pcaphandle));
         exit(EXIT_FAILURE);
     }
     // Install filter
     if (pcap_setfilter(pcaphandle, &fp) == -1) {
         fprintf(stderr, "Couldn't install filter %s: %s\n",
-                filter, pcap_geterr(pcaphandle));
+                opts.filter, pcap_geterr(pcaphandle));
         exit(EXIT_FAILURE);
     }
     if (opts.rw_mode_opt == WRITE) {
-        dumpfile = pcap_dump_open(pcaphandle, opts.filepath);
+        dumpfile = pcap_dump_open(pcaphandle, opts.file_path);
         if (dumpfile == NULL) {
             fprintf(stderr, "Error opening output file.\n");
             exit(EXIT_FAILURE);
@@ -114,7 +113,7 @@ int main(int argc, char *argv[]) {
     pcap_close(pcaphandle);
     if (opts.rw_mode_opt == WRITE) {
         pcap_dump_close(dumpfile);
-        printf("Saved file as %s.\n", opts.filepath);
+        printf("Saved file as %s.\n", opts.file_path);
     }
     puts("Closing program.");
     printf("\n");

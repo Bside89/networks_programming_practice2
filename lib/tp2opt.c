@@ -13,20 +13,21 @@ int paopt_set(int argc, char **argv, pa_opt *o) {
     short rw_set = 0, i_set = 0, f_set = 0, db_set = 0;
     o->debug_opt = 0;
     opterr = 0;
+    strcpy(o->filter, FILTER_DEFAULT_ARGS);
     while ((c = getopt(argc, argv, GETOPT_OPTIONS)) != -1) {
         switch (c) {
             case OPT_WRITE:
                 if (!netopt_is_option_valid(rw_set))
                     return PAOPT_OPTION_NOT_VALID;
                 o->rw_mode_opt = WRITE;
-                strcpy(o->filepath, optarg);
+                strcpy(o->file_path, optarg);
                 rw_set = 1;
                 break;
             case OPT_READ:
                 if (!netopt_is_option_valid(rw_set))
                     return PAOPT_OPTION_NOT_VALID;
                 o->rw_mode_opt = READ;
-                strcpy(o->filepath, optarg);
+                strcpy(o->file_path, optarg);
                 rw_set = 1;
                 break;
             case OPT_INTERFACE_NAME:
@@ -80,7 +81,7 @@ void paopt_debug(pa_opt *o) {
     puts(MINOR_DIV_LINE);
     puts("PACKET ANALYZER OPT INFO (DEBUG MODE)\n");
     printf("File mode: \t\t%s\n", rwmode[o->rw_mode_opt]);
-    printf("File path: \t\t%s\n", o->filepath);
+    printf("File path: \t\t%s\n", o->file_path);
     printf("Interface name: \t%s\n", o->interface_name);
     printf("Print packet load: \t%s\n", answer[o->print_payload_opt]);
     puts(MINOR_DIV_LINE);
